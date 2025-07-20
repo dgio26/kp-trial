@@ -1,0 +1,202 @@
+.dashboard-container {
+  padding: 20px;
+  background-color: #f4f7f6;
+  min-height: 80vh;
+}
+
+.dashboard-container h2 {
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.dashboard-actions {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.create-leave-button {
+  display: inline-block;
+  padding: 12px 25px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.create-leave-button:hover {
+  background-color: #0056b3;
+}
+
+.leave-requests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.leave-card {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.leave-card h3 {
+  color: #007bff;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.leave-card p {
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.leave-card strong {
+  color: #333;
+}
+
+.reject-reason {
+  color: #dc3545;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.card-actions {
+  margin-top: auto; /* Pushes buttons to the bottom */
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.edit-button,
+.submit-button,
+.approve-button,
+.reject-button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+  text-decoration: none; /* For Link components styled as buttons */
+  display: inline-block; /* For Link components styled as buttons */
+  text-align: center;
+}
+
+.edit-button {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.edit-button:hover {
+  background-color: #e0a800;
+}
+
+.submit-button {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.submit-button:hover {
+  background-color: #138496;
+}
+
+.approve-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.approve-button:hover {
+  background-color: #218838;
+}
+
+.reject-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.reject-button:hover {
+  background-color: #c82333;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal Content */
+.modal-content {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 500px;
+  text-align: center;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.modal-content textarea {
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.modal-actions .confirm-button,
+.modal-actions .cancel-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.modal-actions .confirm-button {
+  background-color: #dc3545; /* Red for confirm reject */
+  color: white;
+}
+
+.modal-actions .confirm-button:hover {
+  background-color: #c82333;
+}
+
+.modal-actions .cancel-button {
+  background-color: #6c757d; /* Gray for cancel */
+  color: white;
+}
+
+.modal-actions .cancel-button:hover {
+  background-color: #5a6268;
+}

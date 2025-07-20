@@ -1,0 +1,19 @@
+{
+  "name": "sistem-manajemen-cuti",
+  "version": "1.0.0",
+  "description": "Sistem Manajemen Cuti - Full Stack",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "install-server": "cd backend && npm install",
+    "install-client": "cd frontend && npm install",
+    "install-all": "npm run install-server && npm run install-client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  },
+  "dependencies": {
+    "react-datepicker": "^8.4.0"
+  }
+}
