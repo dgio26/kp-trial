@@ -1,5 +1,3 @@
--- PostgreSQL schema for the leave management system (Revised)
-
 -- Table for departments
 CREATE TABLE departemen (
     id SERIAL PRIMARY KEY,
@@ -9,7 +7,8 @@ CREATE TABLE departemen (
 -- Table for job titles
 CREATE TABLE jabatan (
     id SERIAL PRIMARY KEY,
-    nama_jabatan VARCHAR(255) NOT NULL UNIQUE
+    nama_jabatan VARCHAR(255) NOT NULL UNIQUE,
+    level INT NOT NULL
 );
 
 -- Table for employees (users)
@@ -30,11 +29,15 @@ CREATE TABLE karyawan (
 CREATE TABLE cuti (
     id SERIAL PRIMARY KEY,
     karyawan_id INT NOT NULL,
-    jenis_cuti VARCHAR(255) NOT NULL,
     tanggal_mulai DATE NOT NULL,
     tanggal_selesai DATE NOT NULL,
-    alasan TEXT,
-    status VARCHAR(50) DEFAULT 'Pending', -- e.g., 'Pending', 'Approved', 'Rejected', 'Cancelled'
+    alasan TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL, -- e.g., 'Pending', 'Approved', 'Rejected', 'Cancelled'
+    current_approver_level INT, -- The minimum level of the next required approver (e.g., 1 for Staff, 2 for Supervisor, 3 for Manager, 4 for HR Manager)
+    supervisor_approval_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
+    manager_approval_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
+    hr_manager_approval_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
+    final_approved BOOLEAN DEFAULT FALSE,
     diajukan_oleh INT, -- ID of the employee who submitted the request
     tanggal_pengajuan TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     disetujui_oleh INT, -- ID of the employee who approved/rejected the request
@@ -51,13 +54,13 @@ INSERT INTO departemen (nama_departemen) VALUES
 ('R&D'),
 ('QC'),
 ('QA'),
-('Warehouse (WH)'),
 ('HR'),
 ('IT'),
+('Warehouse (WH)'),
 ('Production (PN)'),
 ('Engineering (EG)');
 
-INSERT INTO jabatan (nama_jabatan) VALUES
-('Staff'),
-('Supervisor'),
-('Manager');
+INSERT INTO jabatan (nama_jabatan, level) VALUES
+('Staff', 1),
+('Supervisor', 2),
+('Manager', 3);

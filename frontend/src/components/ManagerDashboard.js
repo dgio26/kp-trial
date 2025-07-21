@@ -3,7 +3,7 @@ import Dashboard from './Dashboard';
 
 function ManagerDashboard({ leaveForms, onFormAction, userData }) {
   return (
-    <Dashboard role="manager" leaveForms={leaveForms} onFormAction={onFormAction} userData={userData}>
+    <Dashboard role="Manager" leaveForms={leaveForms} onFormAction={onFormAction} userData={userData}>
       {/* Manager-specific content can go here if needed */}
     </Dashboard>
   );

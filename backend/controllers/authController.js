@@ -35,7 +35,7 @@ exports.register = async (req, res) => {
 
     // Simpan data ke tabel karyawan menggunakan ID
     const result = await db.query(
-      `INSERT INTO karyawan (nama, email, kata_sandi, departemen_id, jabatan_id)
+      `INSERT INTO karyawan (nama, email, password, departemen_id, jabatan_id)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
       [nama, email, hashedPassword, departemenId, jabatanId]
@@ -79,7 +79,7 @@ exports.login = async (req, res) => {
     const user = result.rows[0];
 
     // Bandingkan password
-    const validPassword = await bcrypt.compare(password, user.kata_sandi);
+    const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Password salah' });
     }
@@ -92,7 +92,9 @@ exports.login = async (req, res) => {
         nama: user.nama,
         email: user.email,
         departemen: user.nama_departemen, // Use fetched department name
-        jabatan: user.nama_jabatan      // Use fetched job title name
+        jabatan: user.nama_jabatan,      // Use fetched job title name
+        departemen_id: user.departemen_id,
+        jabatan_id: user.jabatan_id
       }
     });
   } catch (error) {

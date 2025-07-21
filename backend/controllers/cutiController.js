@@ -1,12 +1,12 @@
 const pool = require('../config/database');
 
 exports.ajukanCuti = async (req, res) => {
-  const { id_karyawan, nama_karyawan, departemen, jabatan, tanggal_mulai, tanggal_akhir, alasan, status } = req.body;
+  const { karyawan_id, tanggal_mulai, tanggal_selesai, alasan } = req.body;
   try {
     const result = await pool.query(
-      `INSERT INTO pengajuan_cuti (id_karyawan, nama_karyawan, departemen, jabatan, tanggal_mulai, tanggal_akhir, alasan, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [id_karyawan, nama_karyawan, departemen, jabatan, tanggal_mulai, tanggal_akhir, alasan, status]
+      `INSERT INTO cuti (karyawan_id, tanggal_mulai, tanggal_selesai, alasan, status, current_approver_level)
+       VALUES ($1, $2, $3, $4, 'draft', 'Supervisor') RETURNING *`,
+      [karyawan_id, tanggal_mulai, tanggal_selesai, alasan]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -17,47 +17,77 @@ exports.ajukanCuti = async (req, res) => {
 
 exports.getDashboardForms = async (req, res) => {
   const { id } = req.params; // This 'id' is the user's ID
-  const { role, department } = req.query; // Get role and department from query parameters
+  const { role, departmentId } = req.query; // Get role and department from query parameters
 
   try {
-    let query = `SELECT * FROM pengajuan_cuti WHERE id_karyawan = $1`;
-    let queryParams = [id];
+    // First, get user's own forms
+    const ownFormsQuery = `
+      SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+             app.nama AS disetujui_oleh_nama
+      FROM cuti c
+      JOIN karyawan k ON c.karyawan_id = k.id
+      JOIN departemen d ON k.departemen_id = d.id
+      JOIN jabatan j ON k.jabatan_id = j.id
+      LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+      WHERE c.karyawan_id = $1
+      ORDER BY c.created_at DESC
+    `;
+    const ownFormsResult = await pool.query(ownFormsQuery, [id]);
+
+    let pendingFormsResult = { rows: [] };
 
     if (role === 'supervisor') {
-      // Supervisor sees their own forms AND staff forms in their department pending supervisor approval
-      query = `
-        SELECT * FROM pengajuan_cuti
-        WHERE id_karyawan = $1
-        OR (departemen = $2 AND jabatan = 'staff' AND status = 'pending_supervisor')
-        ORDER BY dibuat_pada DESC
+      // Supervisor sees staff forms in their department pending supervisor approval
+      const pendingFormsQuery = `
+        SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+               app.nama AS disetujui_oleh_nama
+        FROM cuti c
+        JOIN karyawan k ON c.karyawan_id = k.id
+        JOIN departemen d ON k.departemen_id = d.id
+        JOIN jabatan j ON k.jabatan_id = j.id
+        LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+        WHERE k.departemen_id = $1 AND c.current_approver_level = 'Supervisor' AND c.status = 'pending'
+        AND c.karyawan_id != $2
+        ORDER BY c.created_at DESC
       `;
-      queryParams = [id, department];
+      pendingFormsResult = await pool.query(pendingFormsQuery, [departmentId, id]);
     } else if (role === 'manager') {
-      // Manager sees their own forms AND staff/supervisor forms in their department pending manager approval
-      query = `
-        SELECT * FROM pengajuan_cuti
-        WHERE id_karyawan = $1
-        OR (departemen = $2 AND (jabatan = 'staff' OR jabatan = 'supervisor') AND status = 'pending_manager')
-        ORDER BY dibuat_pada DESC
+      // Manager sees staff/supervisor forms in their department pending manager approval
+      const pendingFormsQuery = `
+        SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+               app.nama AS disetujui_oleh_nama
+        FROM cuti c
+        JOIN karyawan k ON c.karyawan_id = k.id
+        JOIN departemen d ON k.departemen_id = d.id
+        JOIN jabatan j ON k.jabatan_id = j.id
+        LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+        WHERE k.departemen_id = $1 AND c.current_approver_level = 'Manager' AND c.status = 'pending'
+        AND c.karyawan_id != $2
+        ORDER BY c.created_at DESC
       `;
-      queryParams = [id, department];
+      pendingFormsResult = await pool.query(pendingFormsQuery, [departmentId, id]);
     } else if (role === 'hr_manager') {
-      // HR Manager sees their own forms AND all forms pending HR Manager approval (from any department)
-      query = `
-        SELECT * FROM pengajuan_cuti
-        WHERE id_karyawan = $1
-        OR status = 'pending_hr_manager'
-        ORDER BY dibuat_pada DESC
+      // HR Manager sees all forms pending HR Manager approval (from any department)
+      const pendingFormsQuery = `
+        SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+               app.nama AS disetujui_oleh_nama
+        FROM cuti c
+        JOIN karyawan k ON c.karyawan_id = k.id
+        JOIN departemen d ON k.departemen_id = d.id
+        JOIN jabatan j ON k.jabatan_id = j.id
+        LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+        WHERE c.current_approver_level = 'HR Manager' AND c.status = 'pending'
+        AND c.karyawan_id != $1
+        ORDER BY c.created_at DESC
       `;
-      queryParams = [id];
-    } else {
-      // Default for staff: only their own forms
-      query = `SELECT * FROM pengajuan_cuti WHERE id_karyawan = $1 ORDER BY dibuat_pada DESC`;
-      queryParams = [id];
+      pendingFormsResult = await pool.query(pendingFormsQuery, [id]);
     }
 
-    const result = await pool.query(query, queryParams);
-    res.json(result.rows);
+    // Return structured data with separate sections
+    res.json({
+      ownForms: ownFormsResult.rows,
+      pendingApprovals: pendingFormsResult.rows
+    });
   } catch (err) {
     console.error('Error in getDashboardForms:', err);
     res.status(500).json({ error: err.message });
@@ -69,7 +99,14 @@ exports.getPengajuanByKaryawan = async (req, res) => {
   try {
     // Fetch all leave requests for the user, regardless of status
     const result = await pool.query(
-      `SELECT * FROM pengajuan_cuti WHERE id_karyawan = $1 ORDER BY dibuat_pada DESC`,
+      `SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+              app.nama AS disetujui_oleh_nama
+       FROM cuti c
+       JOIN karyawan k ON c.karyawan_id = k.id
+       JOIN departemen d ON k.departemen_id = d.id
+       JOIN jabatan j ON k.jabatan_id = j.id
+       LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+       WHERE c.karyawan_id = $1 ORDER BY c.created_at DESC`,
       [id]
     );
     res.json(result.rows);
@@ -83,7 +120,14 @@ exports.getDetailPengajuan = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT * FROM pengajuan_cuti WHERE id = $1`,
+      `SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+              app.nama AS disetujui_oleh_nama
+       FROM cuti c
+       JOIN karyawan k ON c.karyawan_id = k.id
+       JOIN departemen d ON k.departemen_id = d.id
+       JOIN jabatan j ON k.jabatan_id = j.id
+       LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+       WHERE c.id = $1`,
       [id]
     );
     if (result.rows.length === 0) {
@@ -97,13 +141,13 @@ exports.getDetailPengajuan = async (req, res) => {
 
 exports.updatePengajuan = async (req, res) => {
   const { id } = req.params;
-  const { nama_karyawan, departemen, jabatan, tanggal_mulai, tanggal_akhir, alasan, status } = req.body;
+  const { tanggal_mulai, tanggal_selesai, alasan } = req.body;
   try {
     const result = await pool.query(
-      `UPDATE pengajuan_cuti 
-       SET nama_karyawan = $1, departemen = $2, jabatan = $3, tanggal_mulai = $4, tanggal_akhir = $5, alasan = $6, status = $7, diperbarui_pada = CURRENT_TIMESTAMP, alasan_reject = NULL
-       WHERE id = $8 AND (status = 'draft' OR status = 'rejected') RETURNING *`,
-      [nama_karyawan, departemen, jabatan, tanggal_mulai, tanggal_akhir, alasan, status, id]
+      `UPDATE cuti
+       SET tanggal_mulai = $1, tanggal_selesai = $2, alasan = $3, updated_at = CURRENT_TIMESTAMP, alasan_reject = NULL, status = 'draft', current_approver_level = 'Supervisor'
+       WHERE id = $4 AND (status = 'draft' OR status = 'rejected') RETURNING *`,
+      [tanggal_mulai, tanggal_selesai, alasan, id]
     );
     if (result.rowCount === 0) {
       return res.status(400).json({ error: 'Tidak dapat mengubah pengajuan yang sudah diproses, disetujui, atau tidak ditemukan.' });
@@ -119,7 +163,7 @@ exports.hapusPengajuan = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `DELETE FROM pengajuan_cuti WHERE id = $1 AND status = 'draft' RETURNING *`,
+      `DELETE FROM cuti WHERE id = $1 AND status = 'draft' RETURNING *`,
       [id]
     );
     if (result.rowCount === 0) {
@@ -142,43 +186,51 @@ exports.handleCutiAction = async (req, res) => {
     let queryParams;
 
     // Fetch current leave request to check status and calculate days if needed
-    const currentCuti = await pool.query('SELECT * FROM pengajuan_cuti WHERE id = $1', [id]);
+    const currentCuti = await pool.query('SELECT * FROM cuti WHERE id = $1', [id]);
     if (currentCuti.rows.length === 0) {
       return res.status(404).json({ message: 'Leave request not found.' });
     }
     const cuti = currentCuti.rows[0];
 
     if (action === 'approve') {
-      if (role === 'supervisor' && cuti.status === 'pending_supervisor') {
-        newStatus = 'pending_manager'; // Supervisor approval moves to Manager
-        updateQuery = `UPDATE pengajuan_cuti SET status = $1, approved_by_supervisor = $2, tanggal_approve_supervisor = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *`;
-        queryParams = [newStatus, approverName, id];
-      } else if (role === 'manager' && cuti.status === 'pending_manager') { // Manager approves requests pending manager
-        newStatus = 'pending_hr_manager'; // Manager approval moves to HR Manager
-        updateQuery = `UPDATE pengajuan_cuti SET status = $1, approved_by_manager = $2, tanggal_approve_manager = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *`;
-        queryParams = [newStatus, approverName, id];
-      } else if (role === 'hr_manager' && cuti.status === 'pending_hr_manager') { // HR Manager approves requests pending HR Manager
-        newStatus = 'approved'; // Final approval
-        updateQuery = `UPDATE pengajuan_cuti SET status = $1, approved_by_hr_manager = $2, tanggal_approve_hr_manager = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *`;
-        queryParams = [newStatus, approverName, id];
+      if (role === 'supervisor' && cuti.current_approver_level === 'Supervisor' && cuti.status === 'pending') {
+        newStatus = 'pending';
+        updateQuery = `UPDATE cuti SET status = $1, current_approver_level = 'Manager', disetujui_oleh = $2, tanggal_persetujuan = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *`;
+        queryParams = [newStatus, approverId, id];
+      } else if (role === 'manager' && cuti.current_approver_level === 'Manager' && cuti.status === 'pending') {
+        newStatus = 'pending';
+        updateQuery = `UPDATE cuti SET status = $1, current_approver_level = 'HR Manager', disetujui_oleh = $2, tanggal_persetujuan = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *`;
+        queryParams = [newStatus, approverId, id];
+      } else if (role === 'hr_manager' && cuti.current_approver_level === 'HR Manager' && cuti.status === 'pending') {
+        newStatus = 'approved';
+        updateQuery = `UPDATE cuti SET status = $1, current_approver_level = 'Approved', disetujui_oleh = $2, tanggal_persetujuan = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *`;
+        queryParams = [newStatus, approverId, id];
 
-        // If approved by HR Manager, update total_cuti_terpakai for the employee
+        // If approved by HR Manager, update total_cuti_taken for the employee
         const startDate = new Date(cuti.tanggal_mulai);
-        const endDate = new Date(cuti.tanggal_akhir);
+        const endDate = new Date(cuti.tanggal_selesai);
         const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
         await pool.query(
-          `UPDATE karyawan SET total_cuti_terpakai = COALESCE(total_cuti_terpakai, 0) + $1 WHERE id = $2`,
-          [diffDays, cuti.id_karyawan]
+          `UPDATE karyawan SET total_cuti_taken = COALESCE(total_cuti_taken, 0) + $1 WHERE id = $2`,
+          [diffDays, cuti.karyawan_id]
         );
       } else {
         return res.status(400).json({ message: 'Invalid approval stage or status.' });
       }
     } else if (action === 'reject') {
-      newStatus = 'draft'; // Revert to draft status
-      updateQuery = `UPDATE pengajuan_cuti SET status = $1, alasan_reject = $2, approved_by_supervisor = NULL, tanggal_approve_supervisor = NULL, approved_by_manager = NULL, tanggal_approve_manager = NULL, approved_by_hr_manager = NULL, tanggal_approve_hr_manager = NULL WHERE id = $3 RETURNING *`;
-      queryParams = [newStatus, rejectReason, id];
+      newStatus = 'rejected';
+      updateQuery = `UPDATE cuti SET status = $1, alasan_reject = $2, disetujui_oleh = $3, tanggal_persetujuan = CURRENT_TIMESTAMP, current_approver_level = 'Supervisor' WHERE id = $4 RETURNING *`;
+      queryParams = [newStatus, rejectReason, approverId, id];
+    } else if (action === 'submit') {
+      if (cuti.status === 'draft' || cuti.status === 'rejected') {
+        newStatus = 'pending';
+        updateQuery = `UPDATE cuti SET status = $1, alasan_reject = NULL, updated_at = CURRENT_TIMESTAMP, current_approver_level = 'Supervisor' WHERE id = $2 RETURNING *`;
+        queryParams = [newStatus, id];
+      } else {
+        return res.status(400).json({ message: 'Cannot submit a leave request that is not in draft or rejected status.' });
+      }
     } else {
       return res.status(400).json({ message: 'Invalid action.' });
     }

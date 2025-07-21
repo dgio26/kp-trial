@@ -23,7 +23,8 @@ function App() {
         // Check if the parsed data is not null or undefined (after parsing)
         if (parsedUser !== null && parsedUser !== undefined) {
           // Ensure id is a number, as it comes from localStorage as a string
-          setUserData({ ...parsedUser, id: parseInt(parsedUser.id) });
+          // Ensure jabatan is lowercase for consistent comparison
+          setUserData({ ...parsedUser, id: parseInt(parsedUser.id), jabatan: parsedUser.jabatan ? parsedUser.jabatan.toLowerCase() : '' });
         } else {
           // If parsed to null/undefined, it's effectively invalid data
           localStorage.removeItem('userData');
@@ -41,17 +42,18 @@ function App() {
     const fetchLeaveForms = async () => {
       if (userData) {
         try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/dashboard-forms/${userData.id}?role=${userData.jabatan}&department=${userData.departemen}`);
+          // Use departemen_id for fetching forms
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/dashboard-forms/${userData.id}?role=${userData.jabatan}&departmentId=${userData.departemen_id}`);
           if (response.ok) {
             const data = await response.json();
             setLeaveForms(data);
           } else {
             console.error('Failed to fetch dashboard leave forms:', response.statusText);
-            setLeaveForms([]);
+            setLeaveForms({ ownForms: [], pendingApprovals: [] });
           }
         } catch (error) {
           console.error('Error fetching dashboard leave forms:', error);
-          setLeaveForms([]);
+          setLeaveForms({ ownForms: [], pendingApprovals: [] });
         }
       }
     };
@@ -59,9 +61,11 @@ function App() {
   }, [userData]);
 
   const handleLoginSuccess = (user) => {
-    setUserData(user);
-    localStorage.setItem('userData', JSON.stringify(user)); // Store user data
-    console.log('Login successful. User data:', user);
+    // Ensure jabatan is stored in lowercase for consistency
+    const userToStore = { ...user, jabatan: user.jabatan ? user.jabatan.toLowerCase() : '' };
+    setUserData(userToStore);
+    localStorage.setItem('userData', JSON.stringify(userToStore)); // Store user data
+    console.log('Login successful. User data:', userToStore);
   };
 
   const handleLogout = () => {
@@ -82,7 +86,8 @@ function App() {
       if (userData) {
         console.log(`[App.js] Re-fetching leave forms for user ID: ${userData.id}`);
         try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/dashboard-forms/${userData.id}?role=${userData.jabatan}&department=${userData.departemen}`);
+          // Use departemen_id for re-fetching forms
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/dashboard-forms/${userData.id}?role=${userData.jabatan}&departmentId=${userData.departemen_id}`);
           if (response.ok) {
             const data = await response.json();
             console.log('[App.js] Fetched leave forms data:', data);
@@ -100,7 +105,7 @@ function App() {
     // For approve/reject actions
     if (formId && roleApproving) {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/action/${formId}`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/${formId}/action`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -118,7 +123,8 @@ function App() {
           console.log(`Leave request ${formId} ${actionType} by ${roleApproving}`);
           // Re-fetch all leave forms to update the dashboard
           if (userData) {
-            const updatedResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/dashboard-forms/${userData.id}?role=${userData.jabatan}&department=${userData.departemen}`);
+            // Use departemen_id for re-fetching forms
+            const updatedResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/dashboard-forms/${userData.id}?role=${userData.jabatan}&departmentId=${userData.departemen_id}`);
             if (updatedResponse.ok) {
               const data = await updatedResponse.json();
               setLeaveForms(data);
@@ -142,38 +148,43 @@ function App() {
 
     if (!userData) return [];
 
+    // Handle case where forms might be an object with ownForms and pendingApprovals
+    let formsArray = [];
+    if (Array.isArray(forms)) {
+      formsArray = forms;
+    } else if (forms && typeof forms === 'object') {
+      // If forms is an object, combine ownForms and pendingApprovals
+      formsArray = [
+        ...(Array.isArray(forms.ownForms) ? forms.ownForms : []),
+        ...(Array.isArray(forms.pendingApprovals) ? forms.pendingApprovals : [])
+      ];
+    }
+
     // The backend now handles most of the filtering based on role and department.
     // This frontend filter primarily ensures that only forms relevant to the user's direct view are shown,
     // especially for their own forms or those explicitly needing their action.
-    return forms.filter(form => {
-      console.log(`[App.js] Filtering form ID: ${form.id}, Status: ${form.status}, Karyawan ID: ${form.id_karyawan}, Jabatan: ${form.jabatan}`);
-      console.log(`[App.js] userData.id: ${userData.id} (Type: ${typeof userData.id}), form.id_karyawan: ${form.id_karyawan} (Type: ${typeof form.id_karyawan})`);
-      console.log(`[App.js] User Jabatan for filtering: ${userData.jabatan}`);
-      
-      let shouldInclude = false;
-      
-      // Always include own forms
-      if (String(form.id_karyawan) === String(userData.id)) {
-        shouldInclude = true;
-      } else {
-        // Include forms pending approval for the current user's role and department
+    return formsArray.filter(form => {
+      // Always include own forms (draft, pending, approved, rejected)
+      if (String(form.karyawan_id) === String(userData.id)) {
+        return true;
+      }
+
+      // Include forms pending approval for the current user's role
+      // The backend query already filters by department for Supervisor/Manager and by current_approver_level
+      // So, here we just need to check if the form is pending and the current user is the designated approver.
+      if (form.status === 'pending') {
         switch (userData.jabatan) {
           case 'supervisor':
-            shouldInclude = form.departemen === userData.departemen && form.jabatan === 'staff' && form.status === 'pending_supervisor';
-            break;
+            return form.current_approver_level === 'Supervisor';
           case 'manager':
-            shouldInclude = form.departemen === userData.departemen && (form.jabatan === 'staff' || form.jabatan === 'supervisor') && form.status === 'pending_manager';
-            break;
+            return form.current_approver_level === 'Manager';
           case 'hr_manager':
-            shouldInclude = form.status === 'pending_hr_manager'; // HR Manager sees all pending HR Manager forms
-            break;
+            return form.current_approver_level === 'HR Manager';
           default:
-            shouldInclude = false;
+            return false;
         }
       }
-      
-      console.log(`[App.js] Form ID: ${form.id} - Included: ${shouldInclude}`);
-      return shouldInclude;
+      return false;
     });
   };
 
@@ -213,6 +224,7 @@ function App() {
                   userId={userData.id}
                   userName={userData.nama}
                   userDepartment={userData.departemen}
+                  userDepartmentId={userData.departemen_id} // Pass department ID
                   userRole={userData.jabatan}
                   onFormAction={handleFormAction}
                 />
@@ -222,6 +234,7 @@ function App() {
                   userId={userData.id}
                   userName={userData.nama}
                   userDepartment={userData.departemen}
+                  userDepartmentId={userData.departemen_id} // Pass department ID
                   userRole={userData.jabatan}
                   onFormAction={handleFormAction}
                 />

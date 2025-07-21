@@ -4,7 +4,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import './LeaveForm.css';
 
-function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction }) {
+function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRole, onFormAction }) {
   const { id } = useParams(); // Get leave ID from URL for editing
   const navigate = useNavigate();
 
@@ -20,8 +20,27 @@ function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction })
   const [employeeList, setEmployeeList] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(userId);
   const [selectedEmployeeRole, setSelectedEmployeeRole] = useState(userRole);
+  const [totalCutiTaken, setTotalCutiTaken] = useState(0); // New state for total cuti taken
 
   useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/karyawan/${userId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setTotalCutiTaken(data.total_cuti_taken || 0);
+        } else {
+          console.error('Failed to fetch user data:', response.statusText);
+        }
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+      }
+    };
+
+    if (userId) {
+      fetchUserData();
+    }
+
     if (id) {
       setIsEditing(true);
       // Fetch existing leave request data for editing
@@ -31,12 +50,12 @@ function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction })
           if (response.ok) {
             const data = await response.json();
             setNamaKaryawan(data.nama_karyawan);
-            setDepartemen(data.departemen);
+            setDepartemen(data.nama_departemen);
             setTanggalMulai(new Date(data.tanggal_mulai));
-            setTanggalAkhir(new Date(data.tanggal_akhir));
+            setTanggalAkhir(new Date(data.tanggal_selesai));
             setAlasan(data.alasan);
-            setSelectedEmployeeId(data.id_karyawan);
-            setSelectedEmployeeRole(data.jabatan); // Set the role of the employee whose leave is being edited
+            setSelectedEmployeeId(data.karyawan_id);
+            setSelectedEmployeeRole(data.nama_jabatan);
           } else {
             console.error('Failed to fetch leave request for editing:', response.statusText);
             setError('Failed to load leave request for editing.');
@@ -55,11 +74,12 @@ function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction })
       setSelectedEmployeeId(userId);
       setSelectedEmployeeRole(userRole);
     }
-  }, [id, userName, userDepartment, userId, userRole]);
+  }, [id, userName, userDepartment, userDepartmentId, userId, userRole]);
 
   const fetchEmployeesInDepartment = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/karyawan/departemen/${userDepartment}`);
+      // Use userDepartmentId for fetching employees
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/karyawan/by-departemen/${userDepartmentId}`);
       if (response.ok) {
         const data = await response.json();
         setEmployeeList(data);
@@ -105,24 +125,18 @@ function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction })
     }
 
     const leaveDays = calculateLeaveDays();
-    if (leaveDays > 12) {
-      setError(`Total leave days (${leaveDays}) exceed the maximum allowed (12 days).`);
+    const remainingLeave = 12 - totalCutiTaken;
+
+    if (leaveDays > remainingLeave) {
+      setError(`Total leave days (${leaveDays}) exceed your remaining leave (${remainingLeave} days).`);
       return;
     }
 
     const leaveData = {
-      id_karyawan: selectedEmployeeId,
-      nama_karyawan: namaKaryawan,
-      departemen: departemen,
-      jabatan: selectedEmployeeRole, // Use the role of the selected employee
+      karyawan_id: selectedEmployeeId,
       tanggal_mulai: tanggalMulai.toISOString().split('T')[0],
-      tanggal_akhir: tanggalAkhir.toISOString().split('T')[0],
+      tanggal_selesai: tanggalAkhir.toISOString().split('T')[0],
       alasan,
-      status: status === 'draft' ? 'draft' : (
-        userRole === 'staff' || userRole === 'supervisor' ? 'pending_supervisor' :
-        userRole === 'manager' ? 'pending_hr_manager' :
-        userRole === 'hr_manager' ? 'approved' : 'draft' // HR Manager's own leave is auto-approved for now
-      ),
     };
 
     try {
@@ -146,8 +160,30 @@ function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction })
       }
 
       if (response.ok) {
+        // If submitting, also call the handleCutiAction with 'submit'
+        if (status === 'submit') {
+          const submittedLeave = await response.json();
+          const submitResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/${submittedLeave.id}/action`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'submit',
+              role: selectedEmployeeRole, // Role of the employee whose leave is being submitted
+              approverId: userId, // The user submitting the form
+            }),
+          });
+
+          if (!submitResponse.ok) {
+            const submitErrorData = await submitResponse.json();
+            setError(submitErrorData.message || 'Failed to submit leave request for approval.');
+            return;
+          }
+        }
+
         setSuccess(`Leave request ${isEditing ? 'updated' : 'created'} and saved as ${status}.`);
-        onFormAction(null, status); // Trigger re-fetch in App.js, passing status as actionType
+        onFormAction(null, status);
         setTimeout(() => navigate('/dashboard'), 1500);
       } else {
         const errorData = await response.json();
@@ -218,7 +254,7 @@ function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction })
         </div>
 
         <div className="form-group">
-          <label htmlFor="tanggalAkhir">Tanggal Akhir:</label>
+          <label htmlFor="tanggalAkhir">Tanggal Selesai:</label>
           <DatePicker
             selected={tanggalAkhir}
             onChange={(date) => setTanggalAkhir(date)}
@@ -244,6 +280,7 @@ function LeaveForm({ userId, userName, userDepartment, userRole, onFormAction })
         </div>
 
         <p>Total Days: {calculateLeaveDays()}</p>
+        <p>Remaining Leave Days: {12 - totalCutiTaken}</p>
 
         <div className="form-actions">
           <button type="button" onClick={() => handleSubmit('draft')} className="save-draft-button">

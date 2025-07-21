@@ -1,28 +1,21 @@
--- Create departemen table
-CREATE TABLE departemen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nama_departemen VARCHAR(255) NOT NULL
-);
+-- Add 'HR Manager' to the jabatan table if it doesn't exist
+INSERT INTO jabatan (nama_jabatan)
+SELECT 'HR Manager'
+WHERE NOT EXISTS (SELECT 1 FROM jabatan WHERE nama_jabatan = 'HR Manager');
 
--- Populate departemen table
-INSERT INTO departemen (nama_departemen) VALUES
-('R&D'),
-('QC'),
-('QA'),
-('HR'),
-('IT'),
-('Warehouse (WH)'),
-('Production (PN)'),
-('Engineering (EG)');
+-- Add current_approver_level column to cuti table
+ALTER TABLE cuti
+ADD COLUMN current_approver_level VARCHAR(50) DEFAULT 'Supervisor'; -- e.g., 'Supervisor', 'Manager', 'HR Manager', 'Approved'
 
--- Create jabatan table
-CREATE TABLE jabatan (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nama_jabatan VARCHAR(255) NOT NULL
-);
+-- Update existing 'Pending' statuses to 'Pending Supervisor' for consistency
+UPDATE cuti
+SET status = 'Pending Supervisor'
+WHERE status = 'Pending';
 
--- Populate jabatan table (assuming common job titles)
-INSERT INTO jabatan (nama_jabatan) VALUES
-('Staff'),
-('Supervisor'),
-('Manager');
+-- Add total_cuti_taken column to karyawan table
+ALTER TABLE karyawan
+ADD COLUMN total_cuti_taken INT DEFAULT 0;
+
+-- Remove jenis_cuti column from cuti table
+ALTER TABLE cuti
+DROP COLUMN IF EXISTS jenis_cuti;

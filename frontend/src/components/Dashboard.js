@@ -7,6 +7,9 @@ function Dashboard({ role, leaveForms, onFormAction, userData, children }) {
   const [currentRejectFormId, setCurrentRejectFormId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
 
+  // Ensure the role is consistently lowercase for internal component logic
+  const normalizedRole = role.toLowerCase();
+
   const handleRejectClick = (formId) => {
     setCurrentRejectFormId(formId);
     setShowRejectReasonInput(true);
@@ -34,7 +37,7 @@ function Dashboard({ role, leaveForms, onFormAction, userData, children }) {
     <div className="dashboard-container">
       <h2>{role} Dashboard</h2>
 
-      {(role === 'staff' || role === 'supervisor' || role === 'manager') && (
+      {(normalizedRole === 'staff' || normalizedRole === 'supervisor' || normalizedRole === 'manager') && (
         <div className="dashboard-actions">
           <Link to="/create-leave" className="create-leave-button">Create New Leave Request</Link>
         </div>
@@ -49,25 +52,25 @@ function Dashboard({ role, leaveForms, onFormAction, userData, children }) {
           {leaveForms.map((form) => (
             <div key={form.id} className="leave-card">
               <h3>Leave Request for {form.nama_karyawan}</h3>
-              <p><strong>Department:</strong> {form.departemen}</p>
-              <p><strong>Role:</strong> {form.jabatan}</p>
+              <p><strong>Department:</strong> {form.nama_departemen}</p>
+              <p><strong>Role:</strong> {form.nama_jabatan}</p>
               <p><strong>Start Date:</strong> {new Date(form.tanggal_mulai).toLocaleDateString()}</p>
-              <p><strong>End Date:</strong> {new Date(form.tanggal_akhir).toLocaleDateString()}</p>
+              <p><strong>End Date:</strong> {new Date(form.tanggal_selesai).toLocaleDateString()}</p>
               <p><strong>Reason:</strong> {form.alasan}</p>
-              <p><strong>Status:</strong> {form.status}</p>
+              <p><strong>Status:</strong> {form.status === 'pending' ? `Pending ${form.current_approver_level} Approval` : form.status}</p>
               {form.alasan_reject && <p className="reject-reason"><strong>Reject Reason:</strong> {form.alasan_reject}</p>}
+              {form.disetujui_oleh && <p><strong>Approved By:</strong> {form.disetujui_oleh_nama} on {new Date(form.tanggal_persetujuan).toLocaleDateString()}</p>}
 
               {/* Actions based on role and status */}
-              {/* Edit and Submit for own forms (draft or rejected) */}
-              {String(form.id_karyawan) === String(userData.id) && (form.status === 'draft' || form.status === 'rejected') && (
+              {/* Edit for own forms (draft or rejected) */}
+              {String(form.karyawan_id) === String(userData.id) && (form.status === 'draft' || form.status === 'rejected') && (
                 <div className="card-actions">
                   <Link to={`/edit-leave/${form.id}`} className="edit-button">Edit</Link>
-                  <button onClick={() => onFormAction(form.id, 'submit')} className="submit-button">Submit</button>
                 </div>
               )}
 
               {/* Approval actions for supervisors */}
-              {role === 'supervisor' && form.status === 'pending_supervisor' && (
+              {normalizedRole === 'supervisor' && form.status === 'pending' && form.current_approver_level === 'Supervisor' && (
                 <div className="card-actions">
                   <button onClick={() => onFormAction(form.id, 'approve', 'supervisor')} className="approve-button">Approve</button>
                   <button onClick={() => handleRejectClick(form.id)} className="reject-button">Reject</button>
@@ -75,7 +78,7 @@ function Dashboard({ role, leaveForms, onFormAction, userData, children }) {
               )}
 
               {/* Approval actions for managers */}
-              {role === 'manager' && form.status === 'pending_manager' && (
+              {normalizedRole === 'manager' && form.status === 'pending' && form.current_approver_level === 'Manager' && (
                 <div className="card-actions">
                   <button onClick={() => onFormAction(form.id, 'approve', 'manager')} className="approve-button">Approve</button>
                   <button onClick={() => handleRejectClick(form.id)} className="reject-button">Reject</button>
@@ -83,7 +86,7 @@ function Dashboard({ role, leaveForms, onFormAction, userData, children }) {
               )}
 
               {/* Approval actions for HR managers */}
-              {role === 'hr_manager' && form.status === 'pending_hr_manager' && (
+              {normalizedRole === 'hr_manager' && form.status === 'pending' && form.current_approver_level === 'HR Manager' && (
                 <div className="card-actions">
                   <button onClick={() => onFormAction(form.id, 'approve', 'hr_manager')} className="approve-button">Approve</button>
                   <button onClick={() => handleRejectClick(form.id)} className="reject-button">Reject</button>

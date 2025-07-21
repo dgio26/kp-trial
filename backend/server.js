@@ -21,6 +21,15 @@ app.use('/api/cuti', cutiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api', dropdownRoutes); // e.g., /api/departemen
 
+// Generic error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.statusCode || 500).json({
+    message: err.message || 'An unexpected error occurred',
+    error: process.env.NODE_ENV === 'production' ? {} : err.stack,
+  });
+});
+
 // Jalankan server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

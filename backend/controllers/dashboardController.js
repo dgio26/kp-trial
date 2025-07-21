@@ -11,7 +11,7 @@ exports.jumlahKaryawan = async (req, res) => {
 
 exports.jumlahPengajuanCuti = async (req, res) => {
   try {
-    const result = await db.query('SELECT COUNT(*) FROM pengajuan_cuti');
+    const result = await db.query('SELECT COUNT(*) FROM cuti');
     res.json({ jumlah_pengajuan: parseInt(result.rows[0].count) });
   } catch (err) {
     res.status(500).json({ error: 'Gagal mengambil jumlah pengajuan cuti' });
@@ -21,10 +21,10 @@ exports.jumlahPengajuanCuti = async (req, res) => {
 exports.pengajuanTerbaru = async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT pc.*, k.nama 
-      FROM pengajuan_cuti pc 
-      JOIN karyawan k ON pc.id_karyawan = k.id 
-      ORDER BY pc.dibuat_pada DESC 
+      SELECT c.*, k.nama 
+      FROM cuti c
+      JOIN karyawan k ON c.karyawan_id = k.id 
+      ORDER BY c.created_at DESC 
       LIMIT 5
     `);
     res.json(result.rows);

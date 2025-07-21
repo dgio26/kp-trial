@@ -7,5 +7,6 @@ router.get('/:id', karyawanController.getKaryawanById);
 router.post('/', karyawanController.addKaryawan);
 router.put('/:id', karyawanController.updateKaryawan);
 router.delete('/:id', karyawanController.deleteKaryawan);
+router.get('/by-departemen/:departemenId', karyawanController.getKaryawanByDepartemen);
 
 module.exports = router;
