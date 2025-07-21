@@ -9,9 +9,9 @@ INSERT INTO departemen (nama_departemen) VALUES
 ('R&D'),
 ('QC'),
 ('QA'),
-('Warehouse (WH)'),
 ('HR'),
 ('IT'),
+('Warehouse (WH)'),
 ('Production (PN)'),
 ('Engineering (EG)');
 

@@ -18,31 +18,26 @@ function RegisterForm({ onRegisterSuccess }) {
 
   const navigate = useNavigate();
 
-  // Fetch departments and job titles on component mount
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        // Fetch departments
         const departemenResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/departemen`);
-        if (!departemenResponse.ok) throw new Error('Failed to fetch departments');
         const departemenData = await departemenResponse.json();
-        // Ensure departemenData is always an array before setting state
+        console.log("Fetched Departemen:", departemenData);
         setDepartemenOptions(Array.isArray(departemenData) ? departemenData : []);
 
-        // Fetch job titles
         const jabatanResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/jabatan`);
-        if (!jabatanResponse.ok) throw new Error('Failed to fetch job titles');
         const jabatanData = await jabatanResponse.json();
-        // Ensure jabatanData is always an array before setting state
-        setJabatanOptions(Array.isArray( jabatanData) ?  jabatanData : []);
+        console.log("Fetched Jabatan:", jabatanData);
+        setJabatanOptions(Array.isArray(jabatanData) ? jabatanData : []);
       } catch (err) {
-        console.error('Error fetching dropdown data:', err);
-        setError('Failed to load dropdown options. Please try again later.');
+        console.error("Error fetching dropdown data:", err);
+        setError("Failed to load dropdown options.");
       }
     };
 
     fetchDropdownData();
-  }, []); // Empty dependency array means this effect runs once on mount
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
