@@ -1,11 +1,240 @@
-import React from 'react';
-import Dashboard from './Dashboard';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import './Dashboard.css';
 
-function HRManagerDashboard({ leaveForms, onFormAction, userData }) {
+function HRManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, children }) {
+  const [showRejectReasonInput, setShowRejectReasonInput] = useState(false);
+  const [currentRejectFormId, setCurrentRejectFormId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  // Use the separated data directly from props
+  const hrOwnForms = ownForms || [];
+  const hrPendingForms = pendingApprovals || []; // These should be forms with current_approver_level === 4
+  
+  // Combine for display and filtering
+  const allForms = [...hrOwnForms, ...hrPendingForms];
+
+  const filteredLeaveForms = allForms.filter(form => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'pending') return form.status?.toLowerCase().includes('pending');
+    if (filterStatus === 'approved') return form.status?.toLowerCase() === 'approved';
+    if (filterStatus === 'rejected') return form.status?.toLowerCase() === 'rejected';
+    if (filterStatus === 'need_hr_approval') {
+      return form.status?.toLowerCase().includes('pending approval') &&
+             Number(form.current_approver_level) === 4;
+    }
+    return true;
+  });
+
+  const handleRejectClick = (formId) => {
+    setCurrentRejectFormId(formId);
+    setShowRejectReasonInput(true);
+    setRejectReason('');
+  };
+
+  const handleConfirmReject = () => {
+    if (currentRejectFormId && rejectReason.trim() !== '') {
+      onFormAction(currentRejectFormId, 'reject', 'hr_manager', rejectReason);
+      setShowRejectReasonInput(false);
+      setCurrentRejectFormId(null);
+      setRejectReason('');
+    } else {
+      alert('Please provide a reason for rejection.');
+    }
+  };
+
+  const handleCancelReject = () => {
+    setShowRejectReasonInput(false);
+    setCurrentRejectFormId(null);
+    setRejectReason('');
+  };
+
+  const handleArchive = (formId) => {
+    onFormAction(formId, 'archive', 'hr_manager');
+  };
+
+  // Auto-approve HR Manager's own leave requests
+  const handleSelfApprove = (formId) => {
+    onFormAction(formId, 'approve', 'hr_manager');
+  };
+
   return (
-    <Dashboard role="hr_manager" leaveForms={leaveForms} onFormAction={onFormAction} userData={userData}>
-      {/* HR Manager-specific content can go here if needed */}
-    </Dashboard>
+    <div className="dashboard-container">
+      <h2>HR Manager Dashboard</h2>
+
+      <div className="dashboard-actions">
+        <Link to="/create-leave" className="create-leave-button">
+          Create New Leave Request
+        </Link>
+        
+        {/* <div className="filter-section">
+          <label htmlFor="status-filter">Filter by Status:</label>
+          <select 
+            id="status-filter"
+            value={filterStatus} 
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="status-filter"
+          >
+            <option value="all">All Requests</option>
+            <option value="need_hr_approval">Need HR Approval</option>
+            <option value="pending">Pending Approval</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div> */}
+      </div>
+
+      {children}
+
+      <div className="stats-section">
+        <div className="stat-card">
+          <h4>Total Requests</h4>
+          <span className="stat-number">{allForms.length}</span>
+        </div>
+        <div className="stat-card">
+          <h4>Need HR Approval</h4>
+          <span className="stat-number">
+            {allForms.filter(form => 
+              form.status?.toLowerCase().includes('pending approval') &&
+              Number(form.current_approver_level) === 4 &&
+              String(form.karyawan_id) !== String(userData.id)
+            ).length}
+          </span>
+        </div>
+        <div className="stat-card">
+          <h4>Approved</h4>
+          <span className="stat-number">
+            {allForms.filter(form => form.status?.toLowerCase() === 'approved').length}
+          </span>
+        </div>
+      </div>
+
+      {filteredLeaveForms.length === 0 ? (
+        <p>No leave requests to display.</p>
+      ) : (
+        <div className="leave-requests-grid">
+          {filteredLeaveForms.map((form) => {
+            const isOwnRequest = String(form.karyawan_id) === String(userData.id);
+            const needsHRApproval = !isOwnRequest &&
+                                   form.status?.toLowerCase().includes('pending approval') &&
+                                   Number(form.current_approver_level) === 4;
+            const isApproved = form.status?.toLowerCase() === 'approved';
+            const isDraft = form.status?.toLowerCase() === 'draft';
+            const isRejected = form.status?.toLowerCase() === 'rejected';
+            const isPendingAndOwn = isOwnRequest && form.status?.toLowerCase().includes('pending');
+
+            return (
+              <div key={form.id} className="leave-card">
+                <h3>
+                  {isOwnRequest ? 'My Leave Request' : `Leave Request for ${form.nama_karyawan}`}
+                </h3>
+                <p><strong>Employee ID:</strong> {form.karyawan_id}</p>
+                <p><strong>Department:</strong> {form.nama_departemen}</p>
+                <p><strong>Role:</strong> {form.nama_jabatan}</p>
+                <p><strong>Start Date:</strong> {new Date(form.tanggal_mulai).toLocaleDateString()}</p>
+                <p><strong>End Date:</strong> {new Date(form.tanggal_selesai).toLocaleDateString()}</p>
+                <p><strong>Reason:</strong> {form.alasan}</p>
+                <p><strong>Status:</strong> 
+                  <span className={`status-badge status-${form.status?.toLowerCase().replace(' ', '-')}`}>
+                    {form.status}
+                  </span>
+                </p>
+
+                {form.alasan_reject && (
+                  <p className="reject-reason">
+                    <strong>Reject Reason:</strong> {form.alasan_reject}
+                  </p>
+                )}
+
+                {form.disetujui_oleh && form.tanggal_persetujuan && (
+                  <p>
+                    <strong>Approved By:</strong> {form.disetujui_oleh_nama} on {new Date(form.tanggal_persetujuan).toLocaleDateString()}
+                  </p>
+                )}
+
+                {/* Edit own forms (draft or rejected) */}
+                {isOwnRequest && (isDraft || isRejected) && (
+                  <div className="card-actions">
+                    <Link to={`/edit-leave/${form.id}`} className="edit-button">
+                      Edit
+                    </Link>
+                  </div>
+                )}
+
+                {/* HR Manager can approve their own pending requests directly */}
+                {isPendingAndOwn && (
+                  <div className="card-actions">
+                    <button 
+                      onClick={() => handleSelfApprove(form.id)} 
+                      className="approve-button self-approve"
+                      title="As HR Manager, you can approve your own leave request"
+                    >
+                      Approve
+                    </button>
+                    <div className="self-approve-note">
+                      <small>As HR Manager, you have authority to approve your own leave requests</small>
+                    </div>
+                  </div>
+                )}
+
+                {/* HR Manager final approval for other employees */}
+                {needsHRApproval && (
+                  <div className="card-actions">
+                    <button 
+                      onClick={() => onFormAction(form.id, 'approve', 'hr_manager')} 
+                      className="approve-button"
+                    >
+                      Approve
+                    </button>
+                    <button 
+                      onClick={() => handleRejectClick(form.id)} 
+                      className="reject-button"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+
+                {/* Archive approved requests */}
+                {isApproved && !isOwnRequest && (
+                  <div className="card-actions">
+                    <button 
+                      onClick={() => handleArchive(form.id)} 
+                      className="archive-button"
+                    >
+                      Archive
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showRejectReasonInput && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Enter Rejection Reason</h3>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Reason for rejection..."
+              rows="5"
+            ></textarea>
+            <div className="modal-actions">
+              <button onClick={handleConfirmReject} className="confirm-button">
+                Confirm
+              </button>
+              <button onClick={handleCancelReject} className="cancel-button">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

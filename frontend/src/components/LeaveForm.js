@@ -133,10 +133,11 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
     }
 
     const leaveData = {
-      karyawan_id: selectedEmployeeId,
+      karyawan_id: parseInt(selectedEmployeeId),
       tanggal_mulai: tanggalMulai.toISOString().split('T')[0],
       tanggal_selesai: tanggalAkhir.toISOString().split('T')[0],
       alasan,
+      submit: status === 'submit'
     };
 
     try {
@@ -159,35 +160,34 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
         });
       }
 
+      // Debug the response
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      // Get response text first to check what we're receiving
+      const responseText = await response.text();
+      console.log('Raw response:', responseText.substring(0, 200));
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        console.error('Response was not valid JSON:', responseText);
+        throw new Error('Server returned invalid response format');
+      }
+
       if (response.ok) {
-        // If submitting, also call the handleCutiAction with 'submit'
-        if (status === 'submit') {
-          const submittedLeave = await response.json();
-          const submitResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/${submittedLeave.id}/action`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'submit',
-              role: selectedEmployeeRole, // Role of the employee whose leave is being submitted
-              approverId: userId, // The user submitting the form
-            }),
-          });
-
-          if (!submitResponse.ok) {
-            const submitErrorData = await submitResponse.json();
-            setError(submitErrorData.message || 'Failed to submit leave request for approval.');
-            return;
-          }
-        }
-
+        // Remove the problematic second API call for now
+        // The backend should handle the submission status based on the 'submit' field
+        
         setSuccess(`Leave request ${isEditing ? 'updated' : 'created'} and saved as ${status}.`);
-        onFormAction(null, status);
+        if (onFormAction) {
+          onFormAction(null, status);
+        }
         setTimeout(() => navigate('/dashboard'), 1500);
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || `Failed to ${isEditing ? 'update' : 'create'} leave request.`);
+        setError(responseData.message || `Failed to ${isEditing ? 'update' : 'create'} leave request.`);
       }
     } catch (err) {
       console.error('Form submission error:', err);
