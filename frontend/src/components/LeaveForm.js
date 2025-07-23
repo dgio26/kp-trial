@@ -20,15 +20,15 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
   const [employeeList, setEmployeeList] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(userId);
   const [selectedEmployeeRole, setSelectedEmployeeRole] = useState(userRole);
-  const [totalCutiTaken, setTotalCutiTaken] = useState(0); // New state for total cuti taken
+  const [sisaCuti, setSisaCuti] = useState(12); // Remaining leave days from backend
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/karyawan/${userId}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/karyawan/${selectedEmployeeId}`);
         if (response.ok) {
           const data = await response.json();
-          setTotalCutiTaken(data.total_cuti_taken || 0);
+          setSisaCuti(data.sisa_cuti || 12);
         } else {
           console.error('Failed to fetch user data:', response.statusText);
         }
@@ -37,7 +37,7 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
       }
     };
 
-    if (userId) {
+    if (selectedEmployeeId) {
       fetchUserData();
     }
 
@@ -76,6 +76,27 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
     }
   }, [id, userName, userDepartment, userDepartmentId, userId, userRole]);
 
+  // Separate useEffect to fetch user data when selectedEmployeeId changes
+  useEffect(() => {
+    const fetchSelectedEmployeeData = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/karyawan/${selectedEmployeeId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSisaCuti(data.sisa_cuti || 12);
+        } else {
+          console.error('Failed to fetch selected employee data:', response.statusText);
+        }
+      } catch (err) {
+        console.error('Error fetching selected employee data:', err);
+      }
+    };
+
+    if (selectedEmployeeId) {
+      fetchSelectedEmployeeData();
+    }
+  }, [selectedEmployeeId]);
+
   const fetchEmployeesInDepartment = async () => {
     try {
       // Use userDepartmentId for fetching employees
@@ -103,9 +124,20 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
 
   const calculateLeaveDays = () => {
     if (tanggalMulai && tanggalAkhir) {
-      const diffTime = Math.abs(tanggalAkhir.getTime() - tanggalMulai.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include start day
-      return diffDays;
+      let count = 0;
+      const current = new Date(tanggalMulai);
+      const end = new Date(tanggalAkhir);
+
+      while (current <= end) {
+        const dayOfWeek = current.getDay();
+        // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          count++;
+        }
+        current.setDate(current.getDate() + 1);
+      }
+
+      return count;
     }
     return 0;
   };
@@ -125,17 +157,24 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
     }
 
     const leaveDays = calculateLeaveDays();
-    const remainingLeave = 12 - totalCutiTaken;
 
-    if (leaveDays > remainingLeave) {
-      setError(`Total leave days (${leaveDays}) exceed your remaining leave (${remainingLeave} days).`);
+    if (status === 'submit' && leaveDays > sisaCuti) {
+      setError(`Total leave days (${leaveDays}) exceed your remaining leave (${sisaCuti} days).`);
       return;
     }
 
+    // Fix timezone issue by using local date string
+    const formatDateForBackend = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const leaveData = {
       karyawan_id: parseInt(selectedEmployeeId),
-      tanggal_mulai: tanggalMulai.toISOString().split('T')[0],
-      tanggal_selesai: tanggalAkhir.toISOString().split('T')[0],
+      tanggal_mulai: formatDateForBackend(tanggalMulai),
+      tanggal_selesai: formatDateForBackend(tanggalAkhir),
       alasan,
       submit: status === 'submit'
     };
@@ -280,7 +319,7 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
         </div>
 
         <p>Total Days: {calculateLeaveDays()}</p>
-        <p>Remaining Leave Days: {12 - totalCutiTaken}</p>
+        <p>Remaining Leave Days: {sisaCuti}</p>
 
         <div className="form-actions">
           <button type="button" onClick={() => handleSubmit('draft')} className="save-draft-button">

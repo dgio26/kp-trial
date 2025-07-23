@@ -19,6 +19,7 @@ CREATE TABLE karyawan (
     password VARCHAR(255) NOT NULL,
     departemen_id INT,
     jabatan_id INT,
+    sisa_cuti INT DEFAULT 12,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (departemen_id) REFERENCES departemen(id),
@@ -31,12 +32,10 @@ CREATE TABLE cuti (
     karyawan_id INT NOT NULL,
     tanggal_mulai DATE NOT NULL,
     tanggal_selesai DATE NOT NULL,
+    total_hari INT NOT NULL,
     alasan TEXT NOT NULL,
-    status VARCHAR(50) NOT NULL, -- e.g., 'Pending', 'Approved', 'Rejected', 'Cancelled'
+    status VARCHAR(50) NOT NULL,
     current_approver_level INT, -- The minimum level of the next required approver (e.g., 1 for Staff, 2 for Supervisor, 3 for Manager, 4 for HR Manager)
-    supervisor_approval_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
-    manager_approval_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
-    hr_manager_approval_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected'
     final_approved BOOLEAN DEFAULT FALSE,
     diajukan_oleh INT, -- ID of the employee who submitted the request
     tanggal_pengajuan TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

@@ -1,22 +1,61 @@
 const pool = require('../config/database');
 
+// Helper function to calculate business days (excluding weekends)
+function calculateBusinessDays(startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  let count = 0;
+  const current = new Date(start);
+
+  while (current <= end) {
+    const dayOfWeek = current.getDay();
+    // 0 = Sunday, 6 = Saturday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+}
+
+// Helper function to update employee's remaining leave balance
+async function updateSisaCuti(karyawanId, totalHari, operation = 'subtract') {
+  const operator = operation === 'subtract' ? '-' : '+';
+  await pool.query(
+    `UPDATE karyawan SET sisa_cuti = sisa_cuti ${operator} $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+    [totalHari, karyawanId]
+  );
+}
+
 exports.ajukanCuti = async (req, res) => {
   const { karyawan_id, tanggal_mulai, tanggal_selesai, alasan, submit } = req.body;
 
   try {
-    const jabatanResult = await pool.query(
-      `SELECT j.nama_jabatan AS jabatan, j.level
+    // Calculate total business days
+    const totalHari = calculateBusinessDays(tanggal_mulai, tanggal_selesai);
+
+    // Check employee's remaining leave balance
+    const karyawanResult = await pool.query(
+      `SELECT k.sisa_cuti, j.nama_jabatan AS jabatan, j.level
        FROM karyawan k
        JOIN jabatan j ON k.jabatan_id = j.id
        WHERE k.id = $1`,
       [karyawan_id]
     );
 
-    if (jabatanResult.rowCount === 0) {
+    if (karyawanResult.rowCount === 0) {
       return res.status(404).json({ message: 'Karyawan tidak ditemukan.' });
     }
 
-    const { jabatan, level } = jabatanResult.rows[0];
+    const { sisa_cuti, jabatan, level } = karyawanResult.rows[0];
+
+    // Check if employee has enough leave balance
+    if (submit && sisa_cuti < totalHari) {
+      return res.status(400).json({ 
+        message: `Sisa cuti tidak mencukupi. Anda memiliki ${sisa_cuti} hari cuti, sedangkan pengajuan memerlukan ${totalHari} hari.` 
+      });
+    }
 
     let status = 'draft';
     let current_approver_level = 2; // default ke Supervisor
@@ -27,9 +66,9 @@ exports.ajukanCuti = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO cuti (karyawan_id, tanggal_mulai, tanggal_selesai, alasan, status, current_approver_level, diajukan_oleh)
-       VALUES ($1, $2, $3, $4, $5, $6, $1) RETURNING *`,
-      [karyawan_id, tanggal_mulai, tanggal_selesai, alasan, status, current_approver_level]
+      `INSERT INTO cuti (karyawan_id, tanggal_mulai, tanggal_selesai, total_hari, alasan, status, current_approver_level, diajukan_oleh)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $1) RETURNING *`,
+      [karyawan_id, tanggal_mulai, tanggal_selesai, totalHari, alasan, status, current_approver_level]
     );
 
     res.status(201).json(result.rows[0]);
@@ -44,7 +83,9 @@ exports.getPengajuanByKaryawan = async (req, res) => {
   const { karyawan_id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT * FROM cuti WHERE karyawan_id = $1 ORDER BY created_at DESC`,
+      `SELECT c.*, k.sisa_cuti FROM cuti c
+       JOIN karyawan k ON c.karyawan_id = k.id
+       WHERE c.karyawan_id = $1 ORDER BY c.created_at DESC`,
       [karyawan_id]
     );
     res.json(result.rows);
@@ -57,7 +98,13 @@ exports.getPengajuanByKaryawan = async (req, res) => {
 exports.getDetailPengajuan = async (req, res) => {
   const { cuti_id } = req.params;
   try {
-    const result = await pool.query(`SELECT * FROM cuti WHERE id = $1`, [cuti_id]);
+    const result = await pool.query(
+      `SELECT c.*, k.sisa_cuti, k.nama AS nama_karyawan
+       FROM cuti c
+       JOIN karyawan k ON c.karyawan_id = k.id
+       WHERE c.id = $1`, 
+      [cuti_id]
+    );
     if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Pengajuan tidak ditemukan.' });
     }
@@ -92,21 +139,34 @@ exports.updatePengajuan = async (req, res) => {
     }
 
     const karyawan_id = pengajuan.rows[0].karyawan_id;
+    const oldTotalHari = pengajuan.rows[0].total_hari;
+    const newTotalHari = calculateBusinessDays(tanggal_mulai, tanggal_selesai);
+    
     console.log('Getting jabatan for karyawan_id:', karyawan_id);
     
-    const jabatanResult = await pool.query(
-      `SELECT j.nama_jabatan AS jabatan, j.level FROM karyawan k
+    const karyawanResult = await pool.query(
+      `SELECT k.sisa_cuti, j.nama_jabatan AS jabatan, j.level FROM karyawan k
        JOIN jabatan j ON k.jabatan_id = j.id
        WHERE k.id = $1`,
       [karyawan_id]
     );
 
-    if (jabatanResult.rowCount === 0) {
+    if (karyawanResult.rowCount === 0) {
       return res.status(404).json({ message: 'Data karyawan atau jabatan tidak ditemukan.' });
     }
 
-    const { jabatan, level } = jabatanResult.rows[0];
-    console.log('Jabatan info:', { jabatan, level });
+    const { sisa_cuti, jabatan, level } = karyawanResult.rows[0];
+    console.log('Karyawan info:', { sisa_cuti, jabatan, level });
+
+    // If this was previously submitted (not draft), ensure the balance is correct before re-checking
+    // The balance is no longer deducted on submission, so no need to restore/deduct here.
+
+    // Check if employee has enough leave balance for new dates when submitting
+    if (submit && sisa_cuti < newTotalHari) {
+      return res.status(400).json({ 
+        message: `Sisa cuti tidak mencukupi. Anda memiliki ${sisa_cuti} hari cuti, sedangkan pengajuan memerlukan ${newTotalHari} hari.` 
+      });
+    }
 
     let status = 'draft';
     let current_approver_level = 2;
@@ -116,12 +176,13 @@ exports.updatePengajuan = async (req, res) => {
       status = `Pending Approval Level ${current_approver_level}`;
     }
 
-    console.log('Updating with:', { tanggal_mulai, tanggal_selesai, alasan, status, current_approver_level });
+    console.log('Updating with:', { tanggal_mulai, tanggal_selesai, alasan, status, current_approver_level, newTotalHari });
 
+    // Clear rejection reason when resubmitting (either as draft or submit)
     const result = await pool.query(
-      `UPDATE cuti SET tanggal_mulai = $1, tanggal_selesai = $2, alasan = $3, status = $4, current_approver_level = $5, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6 RETURNING *`,
-      [tanggal_mulai, tanggal_selesai, alasan, status, current_approver_level, cuti_id]
+      `UPDATE cuti SET tanggal_mulai = $1, tanggal_selesai = $2, total_hari = $3, alasan = $4, status = $5, current_approver_level = $6, alasan_reject = NULL, disetujui_oleh = NULL, tanggal_persetujuan = NULL, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7 RETURNING *`,
+      [tanggal_mulai, tanggal_selesai, newTotalHari, alasan, status, current_approver_level, cuti_id]
     );
 
     console.log('Update successful:', result.rows[0]);
@@ -142,8 +203,14 @@ exports.hapusPengajuan = async (req, res) => {
       return res.status(404).json({ message: 'Pengajuan tidak ditemukan.' });
     }
 
-    if (pengajuan.rows[0].status.toLowerCase() !== 'draft') {
-      return res.status(400).json({ message: 'Hanya pengajuan draft yang dapat dihapus.' });
+    // If the leave was finally approved, restore the leave balance
+    if (pengajuan.rows[0].final_approved) {
+      await updateSisaCuti(pengajuan.rows[0].karyawan_id, pengajuan.rows[0].total_hari, 'add');
+    }
+
+    // Only allow deletion of draft or rejected applications
+    if (!['draft', 'rejected'].includes(pengajuan.rows[0].status.toLowerCase())) {
+      return res.status(400).json({ message: 'Hanya pengajuan draft atau rejected yang dapat dihapus.' });
     }
 
     await pool.query(`DELETE FROM cuti WHERE id = $1`, [cuti_id]);
@@ -173,20 +240,9 @@ exports.getDashboardForms = async (req, res) => {
   console.log('getDashboardForms called with:', { userId, role, deptId });
 
   try {
-    // Debug: Let's see what data exists in your database
-    const debugQuery = `
-      SELECT c.id, c.status, c.current_approver_level, k.nama AS nama_karyawan, k.departemen_id
-      FROM cuti c
-      JOIN karyawan k ON c.karyawan_id = k.id
-      ORDER BY c.created_at DESC
-      LIMIT 10
-    `;
-    const debugResult = await pool.query(debugQuery);
-    console.log('DEBUG - Sample cuti records:', debugResult.rows);
-
-    // First, get user's own forms
+    // First, get user's own forms with remaining leave balance
     const ownFormsQuery = `
-      SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+      SELECT c.*, k.nama AS nama_karyawan, k.sisa_cuti, d.nama_departemen, j.nama_jabatan,
              app.nama AS disetujui_oleh_nama
       FROM cuti c
       JOIN karyawan k ON c.karyawan_id = k.id
@@ -197,7 +253,6 @@ exports.getDashboardForms = async (req, res) => {
       ORDER BY c.created_at DESC
     `;
     const ownFormsResult = await pool.query(ownFormsQuery, [userId]);
-    console.log('DEBUG - Own forms found:', ownFormsResult.rows.length);
     
     let pendingFormsResult = { rows: [] };
     
@@ -205,19 +260,8 @@ exports.getDashboardForms = async (req, res) => {
       // Supervisor sees staff forms in their department pending supervisor approval (level 2)
       console.log('Fetching pending forms for supervisor with params:', [deptId, userId]);
       
-      // Debug query - let's see what exists for this department
-      const debugSupervisorQuery = `
-        SELECT c.id, c.status, c.current_approver_level, k.nama, k.departemen_id
-        FROM cuti c
-        JOIN karyawan k ON c.karyawan_id = k.id
-        WHERE k.departemen_id = $1 AND c.karyawan_id != $2
-        ORDER BY c.created_at DESC
-      `;
-      const debugSupervisorResult = await pool.query(debugSupervisorQuery, [deptId, userId]);
-      console.log('DEBUG - All forms in department for supervisor:', debugSupervisorResult.rows);
-      
       const pendingFormsQuery = `
-        SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+        SELECT c.*, k.nama AS nama_karyawan, k.sisa_cuti, d.nama_departemen, j.nama_jabatan,
                app.nama AS disetujui_oleh_nama
         FROM cuti c
         JOIN karyawan k ON c.karyawan_id = k.id
@@ -231,25 +275,12 @@ exports.getDashboardForms = async (req, res) => {
         ORDER BY c.created_at DESC
       `;
       pendingFormsResult = await pool.query(pendingFormsQuery, [deptId, userId]);
-      console.log('DEBUG - Supervisor pending forms found:', pendingFormsResult.rows.length);
-      
     } else if (role === 'manager') {
       // Manager sees staff/supervisor forms in their department pending manager approval (level 3)
       console.log('Fetching pending forms for manager with params:', [deptId, userId]);
       
-      // Debug query for manager
-      const debugManagerQuery = `
-        SELECT c.id, c.status, c.current_approver_level, k.nama, k.departemen_id
-        FROM cuti c
-        JOIN karyawan k ON c.karyawan_id = k.id
-        WHERE k.departemen_id = $1 AND c.karyawan_id != $2
-        ORDER BY c.created_at DESC
-      `;
-      const debugManagerResult = await pool.query(debugManagerQuery, [deptId, userId]);
-      console.log('DEBUG - All forms in department for manager:', debugManagerResult.rows);
-      
       const pendingFormsQuery = `
-        SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+        SELECT c.*, k.nama AS nama_karyawan, k.sisa_cuti, d.nama_departemen, j.nama_jabatan,
                app.nama AS disetujui_oleh_nama
         FROM cuti c
         JOIN karyawan k ON c.karyawan_id = k.id
@@ -263,25 +294,12 @@ exports.getDashboardForms = async (req, res) => {
         ORDER BY c.created_at DESC
       `;
       pendingFormsResult = await pool.query(pendingFormsQuery, [deptId, userId]);
-      console.log('DEBUG - Manager pending forms found:', pendingFormsResult.rows.length);
-      
     } else if (role === 'hr_manager') {
       // HR Manager sees all forms pending HR Manager approval (level 4) from any department
       console.log('Fetching pending forms for HR manager with params:', [userId]);
       
-      // Debug query for HR manager
-      const debugHRQuery = `
-        SELECT c.id, c.status, c.current_approver_level, k.nama, k.departemen_id
-        FROM cuti c
-        JOIN karyawan k ON c.karyawan_id = k.id
-        WHERE c.karyawan_id != $1
-        ORDER BY c.created_at DESC
-      `;
-      const debugHRResult = await pool.query(debugHRQuery, [userId]);
-      console.log('DEBUG - All forms for HR manager:', debugHRResult.rows);
-      
       const pendingFormsQuery = `
-        SELECT c.*, k.nama AS nama_karyawan, d.nama_departemen, j.nama_jabatan,
+        SELECT c.*, k.nama AS nama_karyawan, k.sisa_cuti, d.nama_departemen, j.nama_jabatan,
                app.nama AS disetujui_oleh_nama
         FROM cuti c
         JOIN karyawan k ON c.karyawan_id = k.id
@@ -294,7 +312,6 @@ exports.getDashboardForms = async (req, res) => {
         ORDER BY c.created_at DESC
       `;
       pendingFormsResult = await pool.query(pendingFormsQuery, [userId]);
-      console.log('DEBUG - HR Manager pending forms found:', pendingFormsResult.rows.length);
     }
     
     console.log('Results:', {
@@ -358,25 +375,28 @@ exports.handleCutiAction = async (req, res) => {
 
     if (action === 'approve') {
       if (role === 'hr_manager') {
-        // HR Manager gives final approval
+        // ONLY HR Manager can give final approval
         next_status = 'approved';
         final_approved = true;
         next_approver_level = null;
+        await updateSisaCuti(cuti.karyawan_id, cuti.total_hari, 'subtract'); // Deduct leave when finally approved
       } else {
-        // Move to next approval level
+        // ALL other approvals must go to the next level, eventually reaching HR Manager
         next_approver_level = approver_level + 1;
-        if (next_approver_level > 3) {
-          // If no HR approval needed, mark as approved
-          next_status = 'approved';
-          final_approved = true;
-          next_approver_level = null;
-        } else {
+        
+        // Always continue to next level until HR Manager (level 4)
+        if (next_approver_level <= 4) {
           next_status = `Pending Approval Level ${next_approver_level}`;
+        } else {
+          // This should never happen, but just in case
+          return res.status(400).json({ message: 'Invalid approval flow.' });
         }
       }
     } else if (action === 'reject') {
       next_status = 'rejected';
       next_approver_level = null;
+      
+      // No need to restore balance since it's not deducted on submission
     } else if (action === 'archive') {
       next_status = 'archived';
       next_approver_level = null;
@@ -393,6 +413,27 @@ exports.handleCutiAction = async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error in handleCutiAction:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// New endpoint to get employee's current leave balance
+exports.getSisaCuti = async (req, res) => {
+  const { karyawan_id } = req.params;
+  
+  try {
+    const result = await pool.query(
+      `SELECT sisa_cuti, nama FROM karyawan WHERE id = $1`,
+      [karyawan_id]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Karyawan tidak ditemukan.' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error in getSisaCuti:', err);
     res.status(500).json({ error: err.message });
   }
 };

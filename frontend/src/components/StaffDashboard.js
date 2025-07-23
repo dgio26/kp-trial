@@ -31,6 +31,7 @@ function StaffDashboard({ leaveForms, userData, children }) {
               <p><strong>Role:</strong> {form.nama_jabatan}</p>
               <p><strong>Start Date:</strong> {new Date(form.tanggal_mulai).toLocaleDateString()}</p>
               <p><strong>End Date:</strong> {new Date(form.tanggal_selesai).toLocaleDateString()}</p>
+              <p><strong>Total Days:</strong> {form.total_hari}</p>
               <p><strong>Reason:</strong> {form.alasan}</p>
               <p><strong>Status:</strong> {form.status}</p>
 

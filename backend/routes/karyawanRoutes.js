@@ -9,4 +9,6 @@ router.put('/:id', karyawanController.updateKaryawan);
 router.delete('/:id', karyawanController.deleteKaryawan);
 router.get('/by-departemen/:departemenId', karyawanController.getKaryawanByDepartemen);
 
+router.put('/:id/sisa-cuti', karyawanController.updateSisaCuti);
+
 module.exports = router;

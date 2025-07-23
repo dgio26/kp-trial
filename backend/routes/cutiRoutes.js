@@ -10,4 +10,6 @@ router.delete('/:cuti_id', cutiController.hapusPengajuan);
 router.post('/:cuti_id/action', cutiController.handleCutiAction); // New route for approve/reject
 router.get('/dashboard-forms/:id', cutiController.getDashboardForms); // New route for fetching dashboard forms
 
+router.get('/sisa-cuti/:karyawan_id', cutiController.getSisaCuti);
+
 module.exports = router;
