@@ -17,6 +17,7 @@ function HRManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData
 
   const filteredLeaveForms = allForms.filter(form => {
     if (filterStatus === 'all') return true;
+    if (filterStatus === 'draft') return form.status?.toLowerCase() === 'draft';
     if (filterStatus === 'pending') return form.status?.toLowerCase().includes('pending');
     if (filterStatus === 'approved') return form.status?.toLowerCase() === 'approved';
     if (filterStatus === 'rejected') return form.status?.toLowerCase() === 'rejected';
@@ -68,7 +69,7 @@ function HRManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData
           Create New Leave Request
         </Link>
         
-        {/* <div className="filter-section">
+        <div className="filter-section">
           <label htmlFor="status-filter">Filter by Status:</label>
           <select 
             id="status-filter"
@@ -77,12 +78,13 @@ function HRManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData
             className="status-filter"
           >
             <option value="all">All Requests</option>
+            <option value="draft">Draft Requests</option>
             <option value="need_hr_approval">Need HR Approval</option>
-            <option value="pending">Pending Approval</option>
+            <option value="pending">Pending Requests</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-        </div> */}
+        </div>
       </div>
 
       {children}
@@ -174,7 +176,7 @@ function HRManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData
                       Approve
                     </button>
                     <div className="self-approve-note">
-                      <small>As HR Manager, you have authority to approve your own leave requests</small>
+                      <small>As HR Manager, you have authority to approve your own leave requests.</small>
                     </div>
                   </div>
                 )}

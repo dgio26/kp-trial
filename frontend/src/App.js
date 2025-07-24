@@ -9,6 +9,7 @@ import DashboardRouter from './components/DashboardRouter';
 function App() {
   const [userData, setUserData] = useState(null);
   const [dashboardData, setDashboardData] = useState({ ownForms: [], pendingApprovals: [] });
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,7 +18,12 @@ function App() {
       try {
         const parsedUser = JSON.parse(storedUser);
         if (parsedUser !== null && parsedUser !== undefined) {
-          setUserData({ ...parsedUser, id: parseInt(parsedUser.id), departemen_id: parseInt(parsedUser.departemen_id), jabatan: parsedUser.jabatan.toLowerCase() });
+          setUserData({ 
+            ...parsedUser, 
+            id: parseInt(parsedUser.id), 
+            departemen_id: parseInt(parsedUser.departemen_id), 
+            jabatan: parsedUser.jabatan.toLowerCase() 
+          });
         } else {
           localStorage.removeItem('userData');
         }
@@ -26,6 +32,7 @@ function App() {
         localStorage.removeItem('userData');
       }
     }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -35,11 +42,12 @@ function App() {
           const response = await fetch(`${process.env.REACT_APP_API_URL}/api/cuti/dashboard-forms/${userData.id}?role=${userData.jabatan}&departmentId=${userData.departemen_id}`);
           if (response.ok) {
             const data = await response.json();
-            setDashboardData(data); // Keep the structured data
+            setDashboardData(data);
           } else {
             setDashboardData({ ownForms: [], pendingApprovals: [] });
           }
         } catch (error) {
+          console.error('Error fetching forms:', error);
           setDashboardData({ ownForms: [], pendingApprovals: [] });
         }
       }
@@ -118,64 +126,103 @@ function App() {
           alert(`Failed: ${errorData.message || response.statusText}`);
         }
       } catch (error) {
+        console.error('Error during action:', error);
         alert(`Error during action: ${actionType}`);
       }
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="App">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Sistem Manajemen Cuti</h1>
-        {userData && (
-          <nav>
-            <span>Welcome, {userData.nama} ({userData.jabatan})</span>
-            <button onClick={handleLogout}>Logout</button>
-          </nav>
-        )}
-      </header>
-      <main className="main-content">
-        <Routes>
-          {userData ? (
-            <>
-              <Route path="/dashboard/:role/:id" element={
-                <DashboardRouter
-                  dashboardData={dashboardData}
-                  onFormAction={handleFormAction}
-                  userData={userData}
-                />
-              } />
-              <Route path="/create-leave" element={
-                <LeaveForm
-                  userId={userData.id}
-                  userName={userData.nama}
-                  userDepartment={userData.departemen}
-                  userDepartmentId={userData.departemen_id}
-                  userRole={userData.jabatan}
-                  onFormAction={handleFormAction}
-                />
-              } />
-              <Route path="/edit-leave/:id" element={
-                <LeaveForm
-                  userId={userData.id}
-                  userName={userData.nama}
-                  userDepartment={userData.departemen}
-                  userDepartmentId={userData.departemen_id}
-                  userRole={userData.jabatan}
-                  onFormAction={handleFormAction}
-                />
-              } />
-              <Route path="*" element={<Navigate to={`/dashboard/${userData.jabatan}/${userData.id}`} />} />
-            </>
-          ) : (
-            <>
-              <Route path="/login" element={<LoginForm onLoginSuccess={handleLoginSuccess} />} />
-              <Route path="/register" element={<RegisterForm onRegisterSuccess={handleRegisterSuccess} />} />
-              <Route path="*" element={<Navigate to="/login" />} />
-            </>
+        <div className="header-content">
+          <div className="company-info">
+            <div className="company-logo">
+              <span className="logo-text">LAPI</span>
+            </div>
+            <div className="system-title">
+              <h1>Sistem Manajemen Cuti</h1>
+              <p className="company-subtitle">PT. LAPI LABORATORIES</p>
+            </div>
+          </div>
+          {userData && (
+            <nav className="user-nav">
+              <div className="user-info">
+                <div className="user-avatar">
+                  {userData.nama.charAt(0).toUpperCase()}
+                </div>
+                <div className="user-details">
+                  <span className="user-name">{userData.nama}</span>
+                  <span className="user-role">{userData.jabatan.replace('_', ' ').toUpperCase()}</span>
+                </div>
+              </div>
+              <button className="logout-btn" onClick={handleLogout}>
+                <span>LOGOUT</span>
+              </button>
+            </nav>
           )}
-        </Routes>
+        </div>
+      </header>
+      
+      <main className="main-content">
+        <div className="content-wrapper">
+          <Routes>
+            {userData ? (
+              <>
+                <Route path="/dashboard/:role/:id" element={
+                  <DashboardRouter
+                    dashboardData={dashboardData}
+                    onFormAction={handleFormAction}
+                    userData={userData}
+                  />
+                } />
+                <Route path="/create-leave" element={
+                  <LeaveForm
+                    userId={userData.id}
+                    userName={userData.nama}
+                    userDepartment={userData.departemen}
+                    userDepartmentId={userData.departemen_id}
+                    userRole={userData.jabatan}
+                    onFormAction={handleFormAction}
+                  />
+                } />
+                <Route path="/edit-leave/:id" element={
+                  <LeaveForm
+                    userId={userData.id}
+                    userName={userData.nama}
+                    userDepartment={userData.departemen}
+                    userDepartmentId={userData.departemen_id}
+                    userRole={userData.jabatan}
+                    onFormAction={handleFormAction}
+                  />
+                } />
+                <Route path="*" element={<Navigate to={`/dashboard/${userData.jabatan}/${userData.id}`} />} />
+              </>
+            ) : (
+              <>
+                <Route path="/login" element={<LoginForm onLoginSuccess={handleLoginSuccess} />} />
+                <Route path="/register" element={<RegisterForm onRegisterSuccess={handleRegisterSuccess} />} />
+                <Route path="*" element={<Navigate to="/login" />} />
+              </>
+            )}
+          </Routes>
+        </div>
       </main>
+      
+      <footer className="App-footer">
+        <p>&copy; 2024 PT. LAPI LABORATORIES. All rights reserved.</p>
+      </footer>
     </div>
   );
 }

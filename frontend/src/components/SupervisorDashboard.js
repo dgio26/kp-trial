@@ -6,6 +6,7 @@ function SupervisorDashboard({ ownForms, pendingApprovals, onFormAction, userDat
   const [showRejectReasonInput, setShowRejectReasonInput] = useState(false);
   const [currentRejectFormId, setCurrentRejectFormId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   // Use the separated data directly from props
   const supervisorOwnForms = ownForms || [];
@@ -13,6 +14,19 @@ function SupervisorDashboard({ ownForms, pendingApprovals, onFormAction, userDat
   
   // Combine for display
   const allForms = [...supervisorOwnForms, ...supervisorPendingForms];
+
+  const filteredLeaveForms = allForms.filter((form) => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'draft') return form.status?.toLowerCase() === 'draft';
+    if (filterStatus === 'pending') return form.status?.toLowerCase().includes('pending');
+    if (filterStatus === 'approved') return form.status?.toLowerCase() === 'approved';
+    if (filterStatus === 'rejected') return form.status?.toLowerCase() === 'rejected';
+    if (filterStatus === 'need_supervisor_approval') {
+      return form.status?.toLowerCase().includes('pending approval') &&
+             Number(form.current_approver_level) === 2;
+    }
+    return true;
+  });
 
   const handleRejectClick = (formId) => {
     setCurrentRejectFormId(formId);
@@ -46,6 +60,23 @@ function SupervisorDashboard({ ownForms, pendingApprovals, onFormAction, userDat
         <Link to="/create-leave" className="create-leave-button">
           Create New Leave Request
         </Link>
+
+        <div className="filter-section">
+          <label htmlFor="status-filter">Filter by Status:</label>
+          <select 
+            id="status-filter"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="status-filter"
+          >
+            <option value="all">All Requests</option>
+            <option value="draft">Draft Requests</option>
+            <option value="need_supervisor_approval">Need Supervisor Approval</option>
+            <option value="pending">Pending Requests</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
       </div>
 
       {children}
@@ -64,13 +95,19 @@ function SupervisorDashboard({ ownForms, pendingApprovals, onFormAction, userDat
             ).length}
           </span>
         </div>
+        <div className="stat-card">
+          <h4>Approved</h4>
+          <span className="stat-number">
+            {allForms.filter(form => form.status?.toLowerCase() === 'approved').length}
+          </span>
+        </div>
       </div>
 
-      {allForms.length === 0 ? (
+      {filteredLeaveForms.length === 0 ? (
         <p>No leave requests to display.</p>
       ) : (
         <div className="leave-requests-grid">
-          {allForms.map((form) => {
+          {filteredLeaveForms.map((form) => {
             const isOwnRequest = String(form.karyawan_id) === String(userData.id);
             const needsApproval = !isOwnRequest &&
                                 form.status?.toLowerCase().startsWith('pending approval') &&

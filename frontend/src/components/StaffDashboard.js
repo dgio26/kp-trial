@@ -33,7 +33,11 @@ function StaffDashboard({ leaveForms, userData, children }) {
               <p><strong>End Date:</strong> {new Date(form.tanggal_selesai).toLocaleDateString()}</p>
               <p><strong>Total Days:</strong> {form.total_hari}</p>
               <p><strong>Reason:</strong> {form.alasan}</p>
-              <p><strong>Status:</strong> {form.status}</p>
+              <p><strong>Status:</strong> 
+                <span className={`status-badge status-${form.status?.toLowerCase().replace(' ', '-')}`}>
+                  {form.status}
+                </span>
+              </p>
 
               {form.alasan_reject && (
                 <p className="reject-reason">

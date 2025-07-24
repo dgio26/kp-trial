@@ -147,7 +147,7 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
     setSuccess('');
 
     if (!tanggalMulai || !tanggalAkhir || !alasan) {
-      setError('Please fill in all required fields (Start Date, End Date, Reason).');
+      setError('Please fill in all required fields.');
       return;
     }
 
@@ -325,7 +325,7 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
           <button type="button" onClick={() => handleSubmit('draft')} className="save-draft-button">
             Save to Draft
           </button>
-          <button type="button" onClick={() => handleSubmit('submit')} className="submit-button">
+          <button type="button" onClick={() => handleSubmit('submit')} className="submitt-button">
             Submit
           </button>
         </div>

@@ -1,55 +1,191 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
 .leave-form-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 80vh;
-  background-color: #f4f7f6;
-  padding: 20px;
-  box-sizing: border-box;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%);
+  padding: 30px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background decorative elements */
+.leave-form-container::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -30%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.leave-form-container::after {
+  content: '';
+  position: absolute;
+  bottom: -25%;
+  left: -25%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: 1;
 }
 
 .leave-form-container h2 {
-  color: #333;
-  margin-bottom: 20px;
+  color: #ffffff;
+  margin-bottom: 35px;
+  font-size: 2.5rem;
+  font-weight: 700;
   text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+  position: relative;
+  letter-spacing: -0.02em;
+}
+
+.leave-form-container h2::after {
+  content: '';
+  display: block;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, #20c997, #17a2b8);
+  margin: 20px auto 0;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .leave-form {
-  background-color: #fff;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 45px;
+  border-radius: 24px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
   width: 100%;
-  max-width: 600px;
-  box-sizing: border-box;
+  max-width: 700px;
+  z-index: 2;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.form-group:last-of-type {
+  margin-bottom: 35px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  color: #555;
-  font-weight: bold;
+  margin-bottom: 10px;
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  position: relative;
+}
+
+.form-group label::before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 18px;
+  background: linear-gradient(180deg, #28a745, #20c997);
+  border-radius: 2px;
+  opacity: 0.7;
 }
 
 .form-group input[type="text"],
 .form-group textarea,
-.react-datepicker-wrapper input {
+.react-datepicker-wrapper input,
+.react-datepicker__input-container input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-sizing: border-box;
+  padding: 16px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  background: #ffffff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  color: #2d3748;
 }
 
+.form-group input[type="text"]:focus,
+.form-group textarea:focus,
+.react-datepicker-wrapper input:focus,
+.react-datepicker__input-container input:focus {
+  border-color: #28a745;
+  box-shadow: 
+    0 0 0 4px rgba(40, 167, 69, 0.1),
+    0 8px 16px rgba(40, 167, 69, 0.15);
+  transform: translateY(-3px);
+}
+
+.form-group input[type="text"]:read-only {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+}
+
+/* Date picker custom styling */
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__input-container input {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2328a745'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+  background-size: 20px;
+  padding-right: 50px;
+  cursor: pointer;
+}
+
+/* Input with button layout */
 .input-with-button {
   display: flex;
-  gap: 10px;
+  gap: 15px;
+  align-items: stretch;
 }
 
 .input-with-button input {
@@ -57,93 +193,315 @@
 }
 
 .small-button {
-  padding: 8px 12px;
-  background-color: #6c757d;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.3s ease;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
 .small-button:hover {
-  background-color: #5a6268;
+  background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(108, 117, 125, 0.4);
 }
 
+/* Employee dropdown styling */
 .employee-list-dropdown {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  max-height: 150px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  max-height: 200px;
   overflow-y: auto;
-  margin-top: 5px;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .employee-list-dropdown ul {
   list-style: none;
-  padding: 0;
+  padding: 8px;
   margin: 0;
 }
 
 .employee-list-dropdown li {
-  padding: 10px;
+  padding: 14px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: #2d3748;
 }
 
 .employee-list-dropdown li:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .employee-list-dropdown li:hover {
-  background-color: #f0f0f0;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  transform: translateX(5px);
 }
 
+.employee-list-dropdown p {
+  padding: 16px;
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Info display styling */
+.leave-form p {
+  background: linear-gradient(135deg, #e8f5e8, #f0f9ff);
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin: 20px 0;
+  font-weight: 600;
+  color: #2d3748;
+  border-left: 5px solid #28a745;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.1);
+}
+
+/* Form actions styling */
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 15px;
+  margin-top: 40px;
+  flex-wrap: wrap;
 }
 
 .save-draft-button,
-.submit-button {
-  padding: 10px 20px;
+.submitt-button {
+  padding: 18px 32px;
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   font-size: 16px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: relative;
+  overflow: hidden;
+  min-width: 140px;
+}
+
+.save-draft-button::before,
+.submitt-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
 }
 
 .save-draft-button {
-  background-color: #6c757d;
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
   color: white;
+  box-shadow: 0 6px 16px rgba(108, 117, 125, 0.3);
 }
 
 .save-draft-button:hover {
-  background-color: #5a6268;
+  background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(108, 117, 125, 0.4);
 }
 
-.submit-button {
-  background-color: #007bff;
+.save-draft-button:hover::before {
+  left: 100%;
+}
+
+.submitt-button {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
   color: white;
+  box-shadow: 0 6px 16px rgba(40, 167, 69, 0.3);
 }
 
-.submit-button:hover {
-  background-color: #0056b3;
+.submitt-button:hover {
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(40, 167, 69, 0.4);
 }
 
+.submitt-button:hover::before {
+  left: 100%;
+}
+
+.save-draft-button:active,
+.submitt-button:active {
+  transform: translateY(-1px);
+}
+
+/* Message styling */
 .error-message {
-  color: #dc3545;
-  margin-top: 10px;
+  color: #e53e3e;
+  margin-top: 20px;
   text-align: center;
+  font-weight: 600;
+  padding: 16px 20px;
+  background: rgba(229, 62, 62, 0.1);
+  border-radius: 12px;
+  border-left: 5px solid #e53e3e;
+  animation: slideIn 0.3s ease-out;
+  backdrop-filter: blur(10px);
 }
 
 .success-message {
   color: #28a745;
-  margin-top: 10px;
+  margin-top: 20px;
   text-align: center;
+  font-weight: 600;
+  padding: 16px 20px;
+  background: rgba(40, 167, 69, 0.1);
+  border-radius: 12px;
+  border-left: 5px solid #28a745;
+  animation: slideIn 0.3s ease-out;
+  backdrop-filter: blur(10px);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .leave-form-container {
+    padding: 20px 15px;
+  }
+  
+  .leave-form-container h2 {
+    font-size: 2rem;
+    margin-bottom: 25px;
+  }
+  
+  .leave-form {
+    padding: 35px 25px;
+    border-radius: 20px;
+    max-width: 100%;
+  }
+  
+  .input-with-button {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .small-button {
+    padding: 16px;
+    font-size: 14px;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .save-draft-button,
+  .submitt-button {
+    width: 100%;
+    padding: 18px;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .leave-form-container h2 {
+    font-size: 1.75rem;
+  }
+  
+  .leave-form {
+    padding: 30px 20px;
+    border-radius: 18px;
+  }
+  
+  .form-group input[type="text"],
+  .form-group textarea,
+  .react-datepicker-wrapper input,
+  .react-datepicker__input-container input {
+    padding: 14px 16px;
+  }
+  
+  .form-group textarea {
+    min-height: 100px;
+  }
+}
+
+/* Loading states */
+.save-draft-button:disabled,
+.submitt-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.save-draft-button:disabled:hover,
+.submitt-button:disabled:hover {
+  transform: none;
+}
+
+/* Focus visible for accessibility */
+.save-draft-button:focus-visible,
+.submitt-button:focus-visible,
+.small-button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.form-group input:focus-visible,
+.form-group textarea:focus-visible {
+  outline: 2px solid #28a745;
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar for employee dropdown */
+.employee-list-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.employee-list-dropdown::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.employee-list-dropdown::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #28a745, #20c997);
+  border-radius: 3px;
+}
+
+.employee-list-dropdown::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #218838, #1ea085);
 }

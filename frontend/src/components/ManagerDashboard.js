@@ -6,13 +6,25 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
   const [showRejectReasonInput, setShowRejectReasonInput] = useState(false);
   const [currentRejectFormId, setCurrentRejectFormId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
-  // Use the separated data directly from props
   const managerOwnForms = ownForms || [];
-  const managerPendingForms = pendingApprovals || []; // These should be forms with current_approver_level === 3
-  
-  // Combine for display
+  const managerPendingForms = pendingApprovals || [];
+
   const allForms = [...managerOwnForms, ...managerPendingForms];
+
+  const filteredLeaveForms = allForms.filter((form) => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'draft') return form.status?.toLowerCase() === 'draft';
+    if (filterStatus === 'pending') return form.status?.toLowerCase().includes('pending');
+    if (filterStatus === 'approved') return form.status?.toLowerCase() === 'approved';
+    if (filterStatus === 'rejected') return form.status?.toLowerCase() === 'rejected';
+    if (filterStatus === 'need_manager_approval') {
+      return form.status?.toLowerCase().includes('pending approval') &&
+             Number(form.current_approver_level) === 3;
+    }
+    return true;
+  });
 
   const handleRejectClick = (formId) => {
     setCurrentRejectFormId(formId);
@@ -22,7 +34,6 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
 
   const handleConfirmReject = () => {
     if (currentRejectFormId && rejectReason.trim() !== '') {
-      // When manager rejects, the form should return to draft status for the original requester
       onFormAction(currentRejectFormId, 'reject', 'manager', rejectReason);
       setShowRejectReasonInput(false);
       setCurrentRejectFormId(null);
@@ -46,6 +57,23 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
         <Link to="/create-leave" className="create-leave-button">
           Create New Leave Request
         </Link>
+
+        <div className="filter-section">
+          <label htmlFor="status-filter">Filter by Status:</label>
+          <select 
+            id="status-filter"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="status-filter"
+          >
+            <option value="all">All Requests</option>
+            <option value="draft">Draft Requests</option>
+            <option value="need_manager_approval">Need Manager Approval</option>
+            <option value="pending">Pending Request</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
       </div>
 
       {children}
@@ -58,23 +86,34 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
         <div className="stat-card">
           <h4>Need Manager Approval</h4>
           <span className="stat-number">
-            {allForms.filter(form => 
+            {allForms.filter(form =>
               form.status?.toLowerCase().includes('pending approval') &&
-              Number(form.current_approver_level) === 3
+              Number(form.current_approver_level) === 3 &&
+              String(form.karyawan_id) !== String(userData.id)
             ).length}
+          </span>
+        </div>
+        <div className="stat-card">
+          <h4>Approved</h4>
+          <span className="stat-number">
+            {allForms.filter(form => form.status?.toLowerCase() === 'approved').length}
           </span>
         </div>
       </div>
 
-      {allForms.length === 0 ? (
+      {filteredLeaveForms.length === 0 ? (
         <p>No leave requests to display.</p>
       ) : (
         <div className="leave-requests-grid">
-          {allForms.map((form) => {
+          {filteredLeaveForms.map((form) => {
             const isOwnRequest = String(form.karyawan_id) === String(userData.id);
-            const needsApproval = !isOwnRequest &&
-                                form.status?.toLowerCase().startsWith('pending approval') &&
-                                Number(form.current_approver_level) === 3; // Manager approval level is 3
+            const needsManagerApproval = !isOwnRequest &&
+              form.status?.toLowerCase().includes('pending approval') &&
+              Number(form.current_approver_level) === 3;
+
+            const isApproved = form.status?.toLowerCase() === 'approved';
+            const isDraft = form.status?.toLowerCase() === 'draft';
+            const isRejected = form.status?.toLowerCase() === 'rejected';
 
             return (
               <div key={form.id} className="leave-card">
@@ -89,7 +128,7 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
                 <p><strong>Total Days:</strong> {form.total_hari}</p>
                 <p><strong>Reason:</strong> {form.alasan}</p>
                 <p><strong>Status:</strong> 
-                  <span className={`status-badge status-${form.status?.toLowerCase().replace(' ', '-')}`}>
+                  <span className={`status-badge status-${form.status?.toLowerCase().replace(/ /g, '-')}`}>
                     {form.status}
                   </span>
                 </p>
@@ -107,7 +146,7 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
                 )}
 
                 {/* Edit own forms (draft or rejected) */}
-                {isOwnRequest && (form.status === 'draft' || form.status === 'rejected') && (
+                {isOwnRequest && (isDraft || isRejected) && (
                   <div className="card-actions">
                     <Link to={`/edit-leave/${form.id}`} className="edit-button">
                       Edit
@@ -115,17 +154,17 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
                   </div>
                 )}
 
-                {/* Manager approval for requests that passed supervisor approval */}
-                {needsApproval && (
+                {/* Manager approval for pending forms */}
+                {needsManagerApproval && (
                   <div className="card-actions">
-                    <button 
-                      onClick={() => onFormAction(form.id, 'approve', 'manager')} 
+                    <button
+                      onClick={() => onFormAction(form.id, 'approve', 'manager')}
                       className="approve-button"
                     >
                       Approve
                     </button>
-                    <button 
-                      onClick={() => handleRejectClick(form.id)} 
+                    <button
+                      onClick={() => handleRejectClick(form.id)}
                       className="reject-button"
                     >
                       Reject
@@ -142,7 +181,6 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>Enter Rejection Reason</h3>
-            <p>This request will be returned to draft status for the employee to revise.</p>
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
@@ -151,7 +189,7 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
             ></textarea>
             <div className="modal-actions">
               <button onClick={handleConfirmReject} className="confirm-button">
-                Confirm Rejection
+                Confirm
               </button>
               <button onClick={handleCancelReject} className="cancel-button">
                 Cancel
