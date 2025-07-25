@@ -221,7 +221,7 @@ function App() {
       </main>
       
       <footer className="App-footer">
-        <p>&copy; 2024 PT. LAPI LABORATORIES. All rights reserved.</p>
+        <p>&copy; 2025 PT. LAPI LABORATORIES. All rights reserved.</p>
       </footer>
     </div>
   );

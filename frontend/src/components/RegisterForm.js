@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'; // Import useEffect
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import './RegisterForm.css'; // Assuming you'll create this CSS file
+import './RegisterForm.css';
 
 function RegisterForm({ onRegisterSuccess }) {
   const [nama, setNama] = useState('');
@@ -12,7 +12,6 @@ function RegisterForm({ onRegisterSuccess }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // State for dropdown options
   const [departemenOptions, setDepartemenOptions] = useState([]);
   const [jabatanOptions, setJabatanOptions] = useState([]);
 
@@ -49,7 +48,6 @@ function RegisterForm({ onRegisterSuccess }) {
       return;
     }
 
-    // Ensure a department and jabatan are selected
     if (!departemen || !jabatan) {
         setError('Please select both department and job title.');
         return;

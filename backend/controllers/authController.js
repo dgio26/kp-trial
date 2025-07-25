@@ -43,13 +43,6 @@ exports.register = async (req, res) => {
 
     const idKaryawan = result.rows[0].id;
 
-    // Tambahkan saldo cuti awal untuk tahun berjalan (jika tabel saldo_cuti digunakan)
-    // const tahunSekarang = new Date().getFullYear();
-    // await db.query(
-    //   `INSERT INTO saldo_cuti (id_karyawan, tahun) VALUES ($1, $2)`,
-    //   [idKaryawan, tahunSekarang]
-    // );
-
     res.status(201).json({ message: 'Pendaftaran berhasil' });
   } catch (error) {
     console.error('Register Error:', error);
@@ -91,8 +84,8 @@ exports.login = async (req, res) => {
         id: user.id,
         nama: user.nama,
         email: user.email,
-        departemen: user.nama_departemen, // Use fetched department name
-        jabatan: user.nama_jabatan,      // Use fetched job title name
+        departemen: user.nama_departemen,
+        jabatan: user.nama_jabatan,
         departemen_id: user.departemen_id,
         jabatan_id: user.jabatan_id
       }

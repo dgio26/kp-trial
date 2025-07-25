@@ -8,11 +8,9 @@ function SupervisorDashboard({ ownForms, pendingApprovals, onFormAction, userDat
   const [rejectReason, setRejectReason] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Use the separated data directly from props
   const supervisorOwnForms = ownForms || [];
-  const supervisorPendingForms = pendingApprovals || []; // These should be forms with current_approver_level === 2
+  const supervisorPendingForms = pendingApprovals || [];
   
-  // Combine for display
   const allForms = [...supervisorOwnForms, ...supervisorPendingForms];
 
   const filteredLeaveForms = allForms.filter((form) => {
@@ -36,7 +34,6 @@ function SupervisorDashboard({ ownForms, pendingApprovals, onFormAction, userDat
 
   const handleConfirmReject = () => {
     if (currentRejectFormId && rejectReason.trim() !== '') {
-      // When supervisor rejects, the form should return to draft status for the original requester
       onFormAction(currentRejectFormId, 'reject', 'supervisor', rejectReason);
       setShowRejectReasonInput(false);
       setCurrentRejectFormId(null);
@@ -111,7 +108,7 @@ function SupervisorDashboard({ ownForms, pendingApprovals, onFormAction, userDat
             const isOwnRequest = String(form.karyawan_id) === String(userData.id);
             const needsApproval = !isOwnRequest &&
                                 form.status?.toLowerCase().startsWith('pending approval') &&
-                                Number(form.current_approver_level) === 2; // Supervisor approval level is 2
+                                Number(form.current_approver_level) === 2;
 
             return (
               <div key={form.id} className="leave-card">

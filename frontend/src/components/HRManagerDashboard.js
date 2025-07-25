@@ -8,11 +8,9 @@ function HRManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData
   const [rejectReason, setRejectReason] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Use the separated data directly from props
   const hrOwnForms = ownForms || [];
-  const hrPendingForms = pendingApprovals || []; // These should be forms with current_approver_level === 4
+  const hrPendingForms = pendingApprovals || [];
   
-  // Combine for display and filtering
   const allForms = [...hrOwnForms, ...hrPendingForms];
 
   const filteredLeaveForms = allForms.filter(form => {

@@ -1,12 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './Dashboard.css';
 
 function StaffDashboard({ leaveForms, userData, children }) {
-  // Staff can only see their own leave requests
   const staffLeaveForms = leaveForms.filter(form => 
     String(form.karyawan_id) === String(userData.id)
   );
+
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  const filteredLeaveForms = staffLeaveForms.filter((form) => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'draft') return form.status?.toLowerCase() === 'draft';
+    if (filterStatus === 'pending') return form.status?.toLowerCase().includes('pending');
+    if (filterStatus === 'approved') return form.status?.toLowerCase() === 'approved';
+    if (filterStatus === 'rejected') return form.status?.toLowerCase() === 'rejected';
+    return true;
+  });
 
   return (
     <div className="dashboard-container">
@@ -16,17 +26,47 @@ function StaffDashboard({ leaveForms, userData, children }) {
         <Link to="/create-leave" className="create-leave-button">
           Create New Leave Request
         </Link>
+
+        <div className="filter-section">
+          <label htmlFor="status-filter">Filter by Status:</label>
+          <select 
+            id="status-filter"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="status-filter"
+          >
+            <option value="all">All Requests</option>
+            <option value="draft">Draft Requests</option>
+            <option value="pending">Pending Requests</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
       </div>
 
       {children}
 
-      {staffLeaveForms.length === 0 ? (
+      <div className="stats-section">
+        <div className="stat-card">
+          <h4>Total Requests</h4>
+          <span className="stat-number">{staffLeaveForms.length}</span>
+        </div>
+        <div className="stat-card">
+          <h4>Approved</h4>
+          <span className="stat-number">
+            {staffLeaveForms.filter(form => form.status?.toLowerCase() === 'approved').length}
+          </span>
+        </div>
+      </div>
+
+      {filteredLeaveForms.length === 0 ? (
         <p>No leave requests to display.</p>
       ) : (
         <div className="leave-requests-grid">
-          {staffLeaveForms.map((form) => (
+          {filteredLeaveForms.map((form) => (
             <div key={form.id} className="leave-card">
               <h3>My Leave Request</h3>
+              <p><strong>Employee ID:</strong> {form.karyawan_id}</p>
               <p><strong>Department:</strong> {form.nama_departemen}</p>
               <p><strong>Role:</strong> {form.nama_jabatan}</p>
               <p><strong>Start Date:</strong> {new Date(form.tanggal_mulai).toLocaleDateString()}</p>

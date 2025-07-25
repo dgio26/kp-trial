@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import './LoginForm.css'; // Assuming you'll create this CSS file
+import './LoginForm.css';
 
 function LoginForm({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -10,7 +10,7 @@ function LoginForm({ onLoginSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); // Clear previous errors
+    setError('');
 
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
@@ -23,7 +23,7 @@ function LoginForm({ onLoginSuccess }) {
 
       if (response.ok) {
         const data = await response.json();
-        onLoginSuccess(data.data); // Pass user data to App.js (corrected from data.user to data.data)
+        onLoginSuccess(data.data);
         navigate('/dashboard'); // Redirect to dashboard on successful login
       } else {
         const errorData = await response.json();

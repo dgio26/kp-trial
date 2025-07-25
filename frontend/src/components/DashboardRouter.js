@@ -12,7 +12,6 @@ const DashboardRouter = ({ dashboardData, onFormAction, userData }) => {
     return <Navigate to="/login" />;
   }
 
-  // Extract the structured data
   const { ownForms = [], pendingApprovals = [] } = dashboardData;
 
   switch (role) {

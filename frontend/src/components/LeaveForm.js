@@ -5,7 +5,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import './LeaveForm.css';
 
 function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRole, onFormAction }) {
-  const { id } = useParams(); // Get leave ID from URL for editing
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [namaKaryawan, setNamaKaryawan] = useState(userName);
@@ -20,7 +20,7 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
   const [employeeList, setEmployeeList] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(userId);
   const [selectedEmployeeRole, setSelectedEmployeeRole] = useState(userRole);
-  const [sisaCuti, setSisaCuti] = useState(12); // Remaining leave days from backend
+  const [sisaCuti, setSisaCuti] = useState(12);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -217,9 +217,6 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
       }
 
       if (response.ok) {
-        // Remove the problematic second API call for now
-        // The backend should handle the submission status based on the 'submit' field
-        
         setSuccess(`Leave request ${isEditing ? 'updated' : 'created'} and saved as ${status}.`);
         if (onFormAction) {
           onFormAction(null, status);

@@ -1,6 +1,5 @@
 const pool = require('../config/database');
 
-// Helper function to calculate business days (excluding weekends)
 function calculateBusinessDays(startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -19,7 +18,6 @@ function calculateBusinessDays(startDate, endDate) {
   return count;
 }
 
-// Helper function to update employee's remaining leave balance
 async function updateSisaCuti(karyawanId, totalHari, operation = 'subtract') {
   const operator = operation === 'subtract' ? '-' : '+';
   await pool.query(
@@ -32,7 +30,6 @@ exports.ajukanCuti = async (req, res) => {
   const { karyawan_id, tanggal_mulai, tanggal_selesai, alasan, submit } = req.body;
 
   try {
-    // Calculate total business days
     const totalHari = calculateBusinessDays(tanggal_mulai, tanggal_selesai);
 
     // Check employee's remaining leave balance
@@ -58,7 +55,7 @@ exports.ajukanCuti = async (req, res) => {
     }
 
     let status = 'draft';
-    let current_approver_level = 2; // default ke Supervisor
+    let current_approver_level = null;
 
     if (submit) {
       current_approver_level = level + 1; // Atasan langsung
@@ -123,7 +120,6 @@ exports.updatePengajuan = async (req, res) => {
   console.log('Request body:', req.body);
 
   try {
-    // Check if pengajuan exists
     console.log('Checking pengajuan with ID:', cuti_id);
     const pengajuan = await pool.query(`SELECT * FROM cuti WHERE id = $1`, [cuti_id]);
     
@@ -158,10 +154,6 @@ exports.updatePengajuan = async (req, res) => {
     const { sisa_cuti, jabatan, level } = karyawanResult.rows[0];
     console.log('Karyawan info:', { sisa_cuti, jabatan, level });
 
-    // If this was previously submitted (not draft), ensure the balance is correct before re-checking
-    // The balance is no longer deducted on submission, so no need to restore/deduct here.
-
-    // Check if employee has enough leave balance for new dates when submitting
     if (submit && sisa_cuti < newTotalHari) {
       return res.status(400).json({ 
         message: `Sisa cuti tidak mencukupi. Anda memiliki ${sisa_cuti} hari cuti, sedangkan pengajuan memerlukan ${newTotalHari} hari.` 
@@ -169,7 +161,7 @@ exports.updatePengajuan = async (req, res) => {
     }
 
     let status = 'draft';
-    let current_approver_level = 2;
+    let current_approver_level = null;
 
     if (submit) {
       current_approver_level = level + 1;
@@ -203,12 +195,10 @@ exports.hapusPengajuan = async (req, res) => {
       return res.status(404).json({ message: 'Pengajuan tidak ditemukan.' });
     }
 
-    // If the leave was finally approved, restore the leave balance
     if (pengajuan.rows[0].final_approved) {
       await updateSisaCuti(pengajuan.rows[0].karyawan_id, pengajuan.rows[0].total_hari, 'add');
     }
 
-    // Only allow deletion of draft or rejected applications
     if (!['draft', 'rejected'].includes(pengajuan.rows[0].status.toLowerCase())) {
       return res.status(400).json({ message: 'Hanya pengajuan draft atau rejected yang dapat dihapus.' });
     }
@@ -222,10 +212,9 @@ exports.hapusPengajuan = async (req, res) => {
 };
 
 exports.getDashboardForms = async (req, res) => {
-  const { id } = req.params; // This 'id' is the user's ID
-  const { role, departmentId } = req.query; // Get role and department from query parameters
+  const { id } = req.params;
+  const { role, departmentId } = req.query;
   
-  // Convert parameters to integers and validate
   const userId = parseInt(id, 10);
   const deptId = parseInt(departmentId, 10);
   
@@ -319,7 +308,6 @@ exports.getDashboardForms = async (req, res) => {
       pendingApprovalsCount: pendingFormsResult.rows.length
     });
     
-    // Return structured data with separate sections
     res.json({
       ownForms: ownFormsResult.rows,
       pendingApprovals: pendingFormsResult.rows
@@ -375,13 +363,11 @@ exports.handleCutiAction = async (req, res) => {
 
     if (action === 'approve') {
       if (role === 'hr_manager') {
-        // ONLY HR Manager can give final approval
         next_status = 'approved';
         final_approved = true;
         next_approver_level = null;
-        await updateSisaCuti(cuti.karyawan_id, cuti.total_hari, 'subtract'); // Deduct leave when finally approved
+        await updateSisaCuti(cuti.karyawan_id, cuti.total_hari, 'subtract');
       } else {
-        // ALL other approvals must go to the next level, eventually reaching HR Manager
         next_approver_level = approver_level + 1;
         
         // Always continue to next level until HR Manager (level 4)
@@ -396,7 +382,6 @@ exports.handleCutiAction = async (req, res) => {
       next_status = 'rejected';
       next_approver_level = null;
       
-      // No need to restore balance since it's not deducted on submission
     } else if (action === 'archive') {
       next_status = 'archived';
       next_approver_level = null;
@@ -417,7 +402,6 @@ exports.handleCutiAction = async (req, res) => {
   }
 };
 
-// New endpoint to get employee's current leave balance
 exports.getSisaCuti = async (req, res) => {
   const { karyawan_id } = req.params;
   
