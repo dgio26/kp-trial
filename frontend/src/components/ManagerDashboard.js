@@ -127,15 +127,34 @@ function ManagerDashboard({ ownForms, pendingApprovals, onFormAction, userData, 
                 <p><strong>End Date:</strong> {new Date(form.tanggal_selesai).toLocaleDateString()}</p>
                 <p><strong>Total Days:</strong> {form.total_hari}</p>
                 <p><strong>Reason:</strong> {form.alasan}</p>
-                <p><strong>Status:</strong> 
-                  <span className={`status-badge status-${form.status?.toLowerCase().replace(/ /g, '-')}`}>
-                    {form.status}
-                  </span>
-                </p>
+              <p><strong>Status:</strong> 
+                <span className={`status-badge ${form.status?.toLowerCase().includes('pending approval') && Number(form.current_approver_level) === 2
+                    ? 'status-pending-approval-supervisor'
+                    : form.status?.toLowerCase().includes('pending approval') && Number(form.current_approver_level) === 3
+                    ? 'status-pending-approval-manager'
+                    : form.status?.toLowerCase().includes('pending approval') && Number(form.current_approver_level) === 4
+                    ? 'status-pending-approval-hr-manager'
+                    : `status-${form.status?.toLowerCase().replace(/ /g, '-')}`
+                  }`}>
+                  {form.status?.toLowerCase().includes('pending approval') && Number(form.current_approver_level) === 2
+                    ? 'Awaiting Supervisor'
+                    : form.status?.toLowerCase().includes('pending approval') && Number(form.current_approver_level) === 3
+                    ? 'Awaiting Manager'
+                    : form.status?.toLowerCase().includes('pending approval') && Number(form.current_approver_level) === 4
+                    ? 'Awaiting HR Manager'
+                    : form.status}
+                </span>
+              </p>
 
                 {form.alasan_reject && (
                   <p className="reject-reason">
                     <strong>Reject Reason:</strong> {form.alasan_reject}
+                  </p>
+                )}
+
+                {form.diajukan_oleh_nama && form.tanggal_pengajuan && (
+                  <p>
+                    <strong>Submitted By:</strong> {form.diajukan_oleh_nama} on {new Date(form.tanggal_pengajuan).toLocaleDateString()}
                   </p>
                 )}
 

@@ -232,12 +232,14 @@ exports.getDashboardForms = async (req, res) => {
     // First, get user's own forms with remaining leave balance
     const ownFormsQuery = `
       SELECT c.*, k.nama AS nama_karyawan, k.sisa_cuti, d.nama_departemen, j.nama_jabatan,
-             app.nama AS disetujui_oleh_nama
+             app.nama AS disetujui_oleh_nama,
+             sub.nama AS diajukan_oleh_nama
       FROM cuti c
       JOIN karyawan k ON c.karyawan_id = k.id
       JOIN departemen d ON k.departemen_id = d.id
       JOIN jabatan j ON k.jabatan_id = j.id
       LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+      LEFT JOIN karyawan sub ON c.diajukan_oleh = sub.id
       WHERE c.karyawan_id = $1
       ORDER BY c.created_at DESC
     `;
@@ -251,12 +253,14 @@ exports.getDashboardForms = async (req, res) => {
       
       const pendingFormsQuery = `
         SELECT c.*, k.nama AS nama_karyawan, k.sisa_cuti, d.nama_departemen, j.nama_jabatan,
-               app.nama AS disetujui_oleh_nama
+               app.nama AS disetujui_oleh_nama,
+               sub.nama AS diajukan_oleh_nama
         FROM cuti c
         JOIN karyawan k ON c.karyawan_id = k.id
         JOIN departemen d ON k.departemen_id = d.id
         JOIN jabatan j ON k.jabatan_id = j.id
         LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+        LEFT JOIN karyawan sub ON c.diajukan_oleh = sub.id
         WHERE k.departemen_id = $1 
           AND c.current_approver_level = '2' 
           AND c.status LIKE 'Pending Approval%'
@@ -270,12 +274,14 @@ exports.getDashboardForms = async (req, res) => {
       
       const pendingFormsQuery = `
         SELECT c.*, k.nama AS nama_karyawan, k.sisa_cuti, d.nama_departemen, j.nama_jabatan,
-               app.nama AS disetujui_oleh_nama
+               app.nama AS disetujui_oleh_nama,
+               sub.nama AS diajukan_oleh_nama
         FROM cuti c
         JOIN karyawan k ON c.karyawan_id = k.id
         JOIN departemen d ON k.departemen_id = d.id
         JOIN jabatan j ON k.jabatan_id = j.id
         LEFT JOIN karyawan app ON c.disetujui_oleh = app.id
+        LEFT JOIN karyawan sub ON c.diajukan_oleh = sub.id
         WHERE k.departemen_id = $1 
           AND c.current_approver_level = '3' 
           AND c.status LIKE 'Pending Approval%'

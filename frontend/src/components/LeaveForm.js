@@ -21,6 +21,8 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(userId);
   const [selectedEmployeeRole, setSelectedEmployeeRole] = useState(userRole);
   const [sisaCuti, setSisaCuti] = useState(12);
+  const [approvedByName, setApprovedByName] = useState('');
+  const [approvedByDate, setApprovedByDate] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -218,6 +220,10 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
 
       if (response.ok) {
         setSuccess(`Leave request ${isEditing ? 'updated' : 'created'} and saved as ${status}.`);
+        if (status === 'submit') {
+          setApprovedByName(userName);
+          setApprovedByDate(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+        }
         if (onFormAction) {
           onFormAction(null, status);
         }
@@ -329,6 +335,12 @@ function LeaveForm({ userId, userName, userDepartment, userDepartmentId, userRol
 
         {error && <p className="error-message">{error}</p>}
         {success && <p className="success-message">{success}</p>}
+
+        {approvedByName && approvedByDate && (
+          <div className="approval-info">
+            <p>Approved By: {approvedByName} on {approvedByDate}</p>
+          </div>
+        )}
       </form>
     </div>
   );
